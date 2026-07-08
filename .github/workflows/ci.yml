@@ -45,5 +45,6 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./backend/Merge-
+          file: ./backend/Merge-/Dockerfile.dev
           push: true
           tags: ghcr.io/${{ steps.repo.outputs.name }}/merge-backend:${{ github.sha }}
