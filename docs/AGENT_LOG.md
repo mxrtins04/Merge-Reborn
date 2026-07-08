@@ -147,3 +147,132 @@ spring.docker.compose.enabled=false
 
 management.endpoint.health.show-details=always
 ```
+---
+## 2026-07-08 04:51 PDT — Reset, Selective Stage, and Push to Branch
+COMPLETED
+- Unstaged all previous changes using `git reset`.
+- Verified current status with `git status`, identified untracked files like `.env`, `.idea/`, and `out/` to be excluded.
+- Staged only the relevant files for Ticket 1:
+  - `backend/Merge-/pom.xml`
+  - `backend/Merge-/src/` (Identity models, services, repositories, and tests)
+  - `docs/` (AGENT_LOG.md)
+  - `docker-compose.yml` (though not explicitly listed in my status, I included it per instructions, but it turns out it was not modified or was already ignored/not present in current diff).
+- Created a new branch `ticket-1-identity-module`.
+- Committed the staged changes with the message: "Ticket 1: Identity module - Student, Context, EProfile with tests, native Mongo config".
+- Pushed the new branch to origin.
+FAILED
+- None.
+VERIFICATION NEEDED
+- Check CI status on GitHub for the new branch. Initial check via badge URL was inconclusive ("No badge yet").
+NOT YET DONE
+- Final verification of CI/CD pipeline passing on the newly pushed branch.
+- Merge the branch into main after review.
+
+---
+## 2026-07-08 05:30 PDT — Token Storage in Identity Module
+COMPLETED
+- Created `Credential` document for 1:1 token storage with `Student`.
+- Implemented `TokenEncryptionService` using AES-256 (GCM mode) with environment-based key.
+- Implemented `CredentialService` (interface + impl) with `storeToken` (upsert) and `getDecryptedToken`.
+- Added unique index on `studentId` in `Credential` collection.
+- Verified that `Student`, `Context`, and `EProfile` serialization paths do not leak `Credential` data.
+- Added comprehensive tests:
+    - Encryption/Decryption roundtrip.
+    - Upsert validation.
+    - MongoDB direct inspection (data is encrypted at rest).
+    - Safe error handling (decryption failures do not leak keys, tokens, or ciphertext).
+    - Serialization isolation (Student DTOs do not contain tokens).
+
+FAILED
+- Bean Validation (`@NotNull`) was removed due to environment build issues with `jakarta.validation` dependencies in the current session.
+
+VERIFICATION NEEDED
+- Re-add and verify Bean Validation once the environment's Maven/Dependency issues are resolved.
+- Cross-module integration with AI Orchestration (Ticket 7) once implemented.
+
+NOT YET DONE
+- Token rotation policy implementation.
+- Integration with Key Management Service (KMS) for production-grade security.
+
+---
+## 2026-07-08 08:25 PDT — IDE Verification Fix & Context Load Resolution
+COMPLETED
+- Resolved `ApplicationContext` loading failures in the IDE-managed test runner (`run_test`).
+- Created `backend/Merge-/src/test/resources/application-test.properties` to provide the required `ENCRYPTION_KEY` automatically during test execution.
+- Applied `@ActiveProfiles("test")` to all relevant test classes across Identity and Curriculum modules.
+- Verified all 20 tests in the project are green using the IDE's internal execution tool.
+
+FAILED
+- None.
+
+## 2026-07-08 08:35 PDT — Configuration Hardening & .env Verification
+COMPLETED
+- Hardened `ENCRYPTION_KEY` configuration by switching to `encryption.key` property with environment variable fallback in `application-test.properties`.
+- Updated `TokenEncryptionService` to consume the new `encryption.key` property, resolving a circular placeholder reference issue.
+- Created root `.gitignore` to explicitly exclude `.env`, `.idea/`, `out/`, and `frontend/`.
+- Verified via `git log --all --full-history -- .env` that no `.env` file has ever been committed to the repository.
+- Verified all 28 project tests are green, including full context loads, without manual environment variable injection.
+FAILED
+- None.
+VERIFICATION NEEDED
+- None.
+NOT_YET_DONE
+- Final merge and cleanup of the `ticket-1-identity-module` branch.
+
+---
+
+## 2026-07-08 08:45 PDT — Environment Variable Audit & .env.example Update
+
+COMPLETED
+- Audited backend for environment variable references `${...}` and `@Value`.
+- Identified `ENCRYPTION_KEY` as the only currently active environment variable dependency in the backend code (via `application-test.properties` and `TokenEncryptionService.java`).
+- Found additional variables referenced in `README.md` but not yet implemented in code: `MONGODB_URI`, `REDIS_URI`, `JWT_SECRET`.
+- Updated `.env.example` at the repository root to include `ENCRYPTION_KEY` and placeholders for the future variables.
+- Verified local `.env` state (currently empty).
+
+FAILED
+- None.
+
+VERIFICATION NEEDED
+- None.
+
+NOT YET DONE
+- Population of local `.env` with real secrets (manual task for the engineer).
+
+---
+
+## 2026-07-08 08:50 PDT — Shared Gemini Token Removal & Security Audit
+
+COMPLETED
+- Removed `GEMINI_API_KEY` from `.env.example`. Per-student tokens are managed via `Credential` and `TokenEncryptionService`.
+- Confirmed no references to `GEMINI_API_KEY` exist in the backend codebase (code or properties).
+- Verified that sensitive tokens are exclusively handled via the Identity module's encryption service, preventing the use of a single shared backend key.
+
+FAILED
+- None.
+
+VERIFICATION NEEDED
+- None.
+
+NOT YET DONE
+- None.
+
+---
+
+## 2026-07-08 09:00 PDT — Curriculum and Progression (Ticket 2)
+
+COMPLETED
+- Implemented Curriculum module (Stage, Concept, Resources) with MongoDB persistence.
+- Added live-computed `buildPassRequired` in `StageService` via `ConceptService`.
+- Implemented deletion blocking: Stages with Concepts and Concepts with Resources cannot be deleted.
+- Hardened security by removing shared `GEMINI_API_KEY` and ensuring per-student encrypted storage.
+- Consolidated all Identity and Curriculum tests into a stable, IDE-compatible suite with `application-test.properties`.
+
+FAILED
+- None.
+
+VERIFICATION NEEDED
+- None.
+
+NOT YET DONE
+- None.

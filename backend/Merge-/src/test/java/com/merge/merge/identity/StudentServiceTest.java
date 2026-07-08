@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
+@org.springframework.test.context.ActiveProfiles("test")
 class StudentServiceTest {
 
     @Autowired
