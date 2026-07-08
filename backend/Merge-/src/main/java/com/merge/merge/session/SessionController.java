@@ -32,6 +32,39 @@ class SessionController {
     private final SessionService sessionService;
 
     /**
+     * Appends one action to the session's path.
+     *
+     * <pre>POST /sessions/{id}/actions</pre>
+     *
+     * <p>Request body fields: {@code actionType} (required), {@code conceptId} (required),
+     * {@code moodAtAction} (required), {@code result} (nullable, only DRILL_ATTEMPT /
+     * CONCEPT_BUILD_ATTEMPT), {@code topicRelevance} and {@code inquiryDepth} (nullable,
+     * only CHAT_INTERACTION).</p>
+     *
+     * <p>Returns 200 with the updated session on success.</p>
+     * <p>Returns 404 if the session does not exist.</p>
+     * <p>Returns 409 if the session is already ended.</p>
+     */
+    @PostMapping("/{id}/actions")
+    ResponseEntity<?> appendAction(@PathVariable UUID id,
+                                   @RequestBody AppendActionRequest request) {
+        try {
+            Session updated = sessionService.appendAction(id, request);
+            return ResponseEntity.ok(updated);
+        } catch (SessionNotFoundException e) {
+            ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+            problem.setTitle("Session not found");
+            problem.setDetail(e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
+        } catch (SessionAlreadyEndedException e) {
+            ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+            problem.setTitle("Session already ended");
+            problem.setDetail(e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
+        }
+    }
+
+    /**
      * Ends an open session.
      *
      * <pre>POST /sessions/{id}/end</pre>
