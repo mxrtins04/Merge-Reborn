@@ -117,7 +117,7 @@ class CredentialServiceTest {
     @Test
     void studentSerializationDoesNotLeakCredentials() throws Exception {
         UUID studentId = UUID.randomUUID();
-        Student student = new Student(studentId, "Test Student", "Details", UUID.randomUUID());
+        Student student = new Student(studentId, null, null, "Test Student", "Details", UUID.randomUUID());
         
         credentialService.storeToken(studentId, CredentialService.TokenType.GEMINI, "secret-gemini-token");
 
