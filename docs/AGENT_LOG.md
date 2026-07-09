@@ -1475,5 +1475,25 @@ A comparison of the codebase against `docs/Merge_Final_PRD_v2.0.md` and `docs/AG
 ### NOT YET DONE
 - None.
 
+---
+
+## 2026-07-09 19:10 CEST — Build the Remediation Service module (Mission) - Part 1
+
+COMPLETED
+- Created branch `feature/mission-schema` off the default branch `main`.
+- Implemented `Mission` and `AttemptHistoryEntry` document schemas mapping Concept, Student, AI-generated pain point description, and attempt history fields.
+- Implemented `MissionRepository` for database query operations.
+
+FAILED
+- None.
+
+VERIFICATION NEEDED
+- None.
+
+NOT YET DONE
+- Failure flow handling (generation on Drill/Concept_build failure).
+- Resolution flow handling (resolution on Drill/Concept_build pass).
+- Wiring direct calls from Practice/Build and Gating modules.
+
 
 
