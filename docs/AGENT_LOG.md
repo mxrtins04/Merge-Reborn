@@ -1540,5 +1540,26 @@ VERIFICATION NEEDED
 NOT YET DONE
 - Wiring direct calls from Practice/Build and Gating modules.
 
+---
+
+## 2026-07-09 22:48 CEST — Build the Project and Eligibility Service module - Part 1
+
+COMPLETED
+- Created branch `feature/project-schema` off the default branch `main`.
+- Implemented `ProjectStatus` enum containing `PENDING`, `APPROVED`, and `REJECTED` states.
+- Implemented `Project` MongoDB document model containing `id`, `studentId`, `given`, `link`, `prd`, `review`, and `status`.
+- Created `ProjectRepository` interface.
+
+FAILED
+- None.
+
+VERIFICATION NEEDED
+- None.
+
+NOT YET DONE
+- Project approval workflow that sets Student.internshipEligible flag.
+- Status transition endpoint and wiring into Student read paths.
+
+
 
 
