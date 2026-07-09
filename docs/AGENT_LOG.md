@@ -1456,4 +1456,24 @@ A comparison of the codebase against `docs/Merge_Final_PRD_v2.0.md` and `docs/AG
 - **Index Optimization**: The class-level `@CompoundIndex` on `Drill.java` was removed to resolve the autoconfiguration conflict with `@Indexed(unique = true)` on the `idempotencyKey` field. This prevents application context startup failure on replica sets.
 - **Zero Drift**: All functionality described in the PRD and claimed in the log is fully implemented in the code artifacts.
 
+---
+
+## 2026-07-09 06:10 PDT — Unused Event Path Cleanup (DrillRequestedEvent)
+
+### COMPLETED
+- **Removed Unused Event Class**: Deleted `DrillRequestedEvent.java` from `com.merge.merge.practice.event` to clean up speculative infrastructure.
+- **Cleaned Event Handler**: Removed the `@EventListener` for `DrillRequestedEvent` and its import from `InstructorEventListener.java` in the AI Orchestration module.
+- **Cleaned Integration Test**: Removed `testSyncDrillGenerateEvent()` and the `DrillRequestedEvent` import from `InstructorServiceTest.java`.
+- **Ran Test Suite**: Verified that all 130 tests pass successfully after the cleanup.
+
+### FAILED
+- None.
+
+### VERIFICATION NEEDED
+- None.
+
+### NOT YET DONE
+- None.
+
+
 
