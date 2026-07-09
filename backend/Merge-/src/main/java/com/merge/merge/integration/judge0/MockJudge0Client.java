@@ -5,7 +5,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile("test")
+@Profile({"test", "default"})
 @Slf4j
 public class MockJudge0Client implements Judge0Client {
     @Override
