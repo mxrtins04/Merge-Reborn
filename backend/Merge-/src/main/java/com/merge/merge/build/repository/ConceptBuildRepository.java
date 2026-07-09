@@ -10,4 +10,5 @@ import java.util.UUID;
 @Repository
 public interface ConceptBuildRepository extends MongoRepository<ConceptBuild, UUID> {
     Optional<ConceptBuild> findByStudentIdAndConceptId(UUID studentId, UUID conceptId);
+    Optional<ConceptBuild> findByIdempotencyKey(String idempotencyKey);
 }

@@ -9,15 +9,16 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.Instant;
 import java.util.UUID;
 
-@Document(collection = "concept_builds")
+@Document(collection = "level_builds")
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ConceptBuild {
+public class LevelBuild {
 
     @Id
     private UUID id;
@@ -26,10 +27,12 @@ public class ConceptBuild {
     private UUID studentId;
 
     @Indexed
-    private UUID conceptId;
+    private UUID stageId;
 
     private boolean passed;
     private int xpAwarded;
+    private int cleanCodeScore;
+    private boolean sfiaAligned;
     private String feedback;
     private BuildStatus status;
     private String githubLink;
@@ -44,13 +47,6 @@ public class ConceptBuild {
     private boolean tddSuitePassed;
     private boolean comprehensionCheckPassed;
 
-    // Preserved 4-arg constructor for test compatibility
-    public ConceptBuild(UUID id, UUID studentId, UUID conceptId, boolean passed) {
-        this.id = id;
-        this.studentId = studentId;
-        this.conceptId = conceptId;
-        this.passed = passed;
-        this.xpAwarded = 0;
-        this.status = passed ? BuildStatus.PASSED : BuildStatus.FAILED;
-    }
+    private Instant createdAt;
+    private Instant updatedAt;
 }
