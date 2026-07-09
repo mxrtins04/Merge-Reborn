@@ -12,7 +12,6 @@ import com.merge.merge.build.event.ConceptBuildUnlockedEvent;
 import com.merge.merge.build.models.ConceptBuild;
 import com.merge.merge.build.repository.ConceptBuildRepository;
 import com.merge.merge.practice.event.DrillPassedEvent;
-import com.merge.merge.practice.event.DrillRequestedEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -78,23 +77,7 @@ public class InstructorServiceTest {
         assertThat(stored.getResult()).isEqualTo(result.getResult());
     }
 
-    @Test
-    void testSyncDrillGenerateEvent() {
-        UUID studentId = UUID.randomUUID();
-        UUID conceptId = UUID.randomUUID();
 
-        DrillRequestedEvent event = new DrillRequestedEvent(this, studentId, conceptId);
-        eventPublisher.publishEvent(event);
-
-        assertThat(event.getResult()).isNotNull();
-        assertThat(event.getResult()).contains("Mock Gemini response");
-        assertThat(event.getInstructorId()).isNotNull();
-
-        Instructor stored = instructorRepository.findById(event.getInstructorId()).orElse(null);
-        assertThat(stored).isNotNull();
-        assertThat(stored.getActionType()).isEqualTo(InstructorActionType.DRILL_GENERATE);
-        assertThat(stored.getStatus()).isEqualTo(InstructorStatus.COMPLETED);
-    }
 
     @Test
     void testSyncComprehensionGenerateEvent() {

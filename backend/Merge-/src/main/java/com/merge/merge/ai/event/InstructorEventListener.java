@@ -6,7 +6,6 @@ import com.merge.merge.build.event.BuildCompletedEvent;
 import com.merge.merge.build.event.BuildSubmittedEvent;
 import com.merge.merge.build.event.ConceptBuildUnlockedEvent;
 import com.merge.merge.practice.event.DrillPassedEvent;
-import com.merge.merge.practice.event.DrillRequestedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -18,18 +17,6 @@ import org.springframework.stereotype.Component;
 public class InstructorEventListener {
 
     private final InstructorService instructorService;
-
-    /**
-     * Reacts synchronously to a student requesting a drill.
-     * Calls Gemini in-thread and populates the event result fields.
-     */
-    @EventListener
-    public void onDrillRequested(DrillRequestedEvent event) {
-        log.info("Received DrillRequestedEvent for student: {}, concept: {}", event.getStudentId(), event.getConceptId());
-        Instructor instructor = instructorService.generateDrillSync(event.getStudentId(), event.getConceptId());
-        event.setResult(instructor.getResult());
-        event.setInstructorId(instructor.getId());
-    }
 
     /**
      * Reacts synchronously to a drill submission passing.
