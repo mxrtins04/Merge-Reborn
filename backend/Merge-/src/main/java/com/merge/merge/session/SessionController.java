@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Set;
@@ -13,7 +14,7 @@ import java.util.UUID;
  * REST interface for the Session resource.
  */
 @RestController
-@RequestMapping("/sessions")
+@RequestMapping("/api/v1/sessions")
 @RequiredArgsConstructor
 class SessionController {
 
@@ -44,7 +45,8 @@ class SessionController {
      */
     @PostMapping("/{id}/end")
     ResponseEntity<?> endSession(@PathVariable UUID id,
-                                 @RequestBody EndSessionRequest request) {
+                                 @RequestBody EndSessionRequest request,
+                                 Authentication authentication) {
         if (request.reason() == null || !CLIENT_SETTABLE_REASONS.contains(request.reason())) {
             ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
             problem.setTitle("Invalid end reason");
@@ -53,8 +55,10 @@ class SessionController {
             return ResponseEntity.badRequest().body(problem);
         }
 
+        UUID studentId = (UUID) authentication.getPrincipal();
+
         try {
-            Session ended = sessionService.endSession(id, request.reason());
+            Session ended = sessionService.endSessionForStudent(id, request.reason(), studentId);
             return ResponseEntity.ok(ended);
         } catch (SessionNotFoundException e) {
             ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
