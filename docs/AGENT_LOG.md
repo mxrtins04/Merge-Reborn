@@ -1780,3 +1780,107 @@ Identical gap existed on the `LevelBuild` path.
 
 ### NOT YET DONE
 - A "local" Spring profile on `MockJudge0Client` to close the profile gap documented in the previous entry.
+
+---
+
+## 2026-07-09 14:15 PDT — Staged 9-commit Build history, merged partner Remediation module
+
+### COMPLETED
+
+**9-commit Build history staged and committed (step 7):**
+
+All commits made before touching the pull, in logical sequence with exact file lists confirmed via `git status --short` before each stage:
+
+| # | Commit | Files |
+|---|--------|-------|
+| 1 | `6821ed4` Add ConceptBuild/LevelBuild domain and repositories | BuildStatus, ConceptBuild, LevelBuild, ConceptBuildRepository, LevelBuildRepository |
+| 2 | `8dbe970` ProgressionService and three-condition promotion logic | ProgressionService interface, ProgressionServiceImpl |
+| 3 | `df5b4ea` BuildQueueWorker + Cadet/Engineer gating + AI boundary | BuildQueueWorker, InstructorActionType, InstructorService, InstructorServiceImpl, deleted InstructorController |
+| 4 | `d0af47c` Judge0Client interface and both implementations | Full integration/judge0 package, pom.xml, application.properties |
+| 5 | `e996153` SubmissionController | SubmissionController |
+| 6 | `58be01f` sourceCode/testSuite wiring through service layer | ConceptBuildService, LevelBuildService, ConceptBuildServiceImpl, LevelBuildServiceImpl |
+| 7 | `d8e8dd0` Build REST endpoints and request DTOs | CreateConceptBuildRequest, CreateLevelBuildRequest, ConceptBuildController, LevelBuildController |
+| 8 | `125bec9` BuildModuleTest | BuildModuleTest |
+| 9 | `cd4fd4e` AGENT_LOG and .env.example | docs/AGENT_LOG.md, .env.example |
+
+**git pull —** Predicted conflicts materialized exactly as anticipated on `InstructorServiceImpl.java` and `docs/AGENT_LOG.md`.
+
+**`InstructorServiceImpl.java` conflict resolved by hand:**
+- Import block: kept `ConceptBuildService` (our reviewed boundary fix), added `InstructorJobCompletedEvent` (partner's new event). Discarded `ConceptBuild` and `ConceptBuildRepository` imports.
+- Field block: kept `ConceptBuildService conceptBuildService`, added `ApplicationEventPublisher eventPublisher`. Discarded `ConceptBuildRepository` field.
+- All other sections auto-merged cleanly: `conceptBuildService.isConceptBuildPassed()` at line 65, `eventPublisher.publishEvent()` at line 255, `MISSION_GENERATE` RESOLUTION/FAILURE flowType split at lines 309–340, `SFIA_ALIGNMENT_EVALUATE` case at line 359.
+- **Independence confirmed:** partner's `ApplicationEventPublisher` + `InstructorJobCompletedEvent` publishing in `processJob` reads no Build layer state. `MISSION_GENERATE` expansion reads only `job.getContext()`. Both additions are structurally independent of the `ConceptBuildService` / `ConceptBuildRepository` choice.
+
+**`docs/AGENT_LOG.md` conflict resolved:** Both sides' entries preserved in full, contiguous blocks. One-line HTML comment added before partner's section noting CEST timestamps = PDT+9 (partner 19:10–19:30 CEST = 10:10–10:30 PDT, which actually precedes our 12:05 PDT entries in wall-clock terms; blocks kept contiguous rather than interleaved to avoid splitting either log section).
+
+**Test suite post-merge: 139 total, 137 pass, 2 fail.**
+
+The 2 failures are `RemediationServiceTest.testDrillPassedEvent_TriggersRemediationPass` and `RemediationServiceTest.testBuildCompletedEvent_TriggersRemediationFailure`. Root cause: these tests publish `DrillPassedEvent` and `BuildCompletedEvent(passed=false)` and expect a `MISSION_GENERATE` instructor job to appear in the queue. No handler exists that calls `remediationService.handlePass/handleFailure` from those events — `InstructorEventListener.onDrillPassed` calls only `generateComprehensionSync`, and `onBuildCompleted` skips the `passed=false` case entirely. Partner's own log explicitly marks this as **NOT YET DONE: "Wiring direct calls from Practice/Build and Gating modules."** Failures are pre-existing on `origin/main` and were not introduced by this merge.
+
+**Merge commit: `b0426fa`**
+
+**git log --oneline -20 (final history):**
+```
+b0426fa Merge partner Remediation module; resolve InstructorServiceImpl conflict
+cd4fd4e Document Build module and Judge0 integration in AGENT_LOG and .env.example
+125bec9 Add BuildModuleTest covering gating, promotion, XP atomicity, and polling
+d8e8dd0 Add Build REST endpoints and request DTOs
+58be01f Wire sourceCode and testSuite through Build service layer
+e996153 Add unified SubmissionController for polling build and AI job status
+d0af47c Implement Judge0Client interface with RapidAPI and mock implementations
+df5b4ea Add BuildQueueWorker with Cadet/Engineer gating and AI service boundary fix
+8dbe970 Implement ProgressionService with three-condition promotion logic
+6821ed4 Add ConceptBuild and LevelBuild domain models and repositories
+9bbd620 Merge pull request #10 from mxrtins04/feature/mission-failure-flow
+...
+```
+
+### FAILED
+- None (merge is correct; 2 pre-existing red tests are not a merge failure).
+
+### VERIFICATION NEEDED
+- `RemediationServiceTest.testDrillPassedEvent_TriggersRemediationPass` and `testBuildCompletedEvent_TriggersRemediationFailure` require `InstructorEventListener` to call `remediationService.handlePass()` on `DrillPassedEvent` and `remediationService.handleFailure()` on `BuildCompletedEvent(passed=false)`. This is the partner's outstanding "Wiring direct calls from Practice/Build and Gating modules" work.
+
+### NOT YET DONE
+- Not pushing yet per instruction.
+
+---
+
+## 2026-07-09 14:28 PDT — Pre-push verification: confirm pre-existing failures and assess merged infrastructure
+
+### COMPLETED
+
+**Verification 1 — Failing tests genuinely predate this merge (evidence, not description):**
+
+Checked out `9bbd620` (partner's `origin/main` tip, the commit this session merged in) via `git checkout 9bbd620` and ran both failing tests directly against that tree:
+
+```
+JAVA_HOME=... ./mvnw test -Dtest="RemediationServiceTest#testDrillPassedEvent_TriggersRemediationPass+testBuildCompletedEvent_TriggersRemediationFailure"
+```
+
+Result at `9bbd620`: **Tests run: 2, Failures: 2** — identical `No queued job found` errors at the same line numbers as on main. These tests were already failing before a single line of this session's code existed in the tree. Not a regression.
+
+**Verification 2 — `InstructorJobCompletedEvent` and `MISSION_GENERATE` flowType split: real, wired infrastructure, not speculative.**
+
+Verbatim code at issue:
+- Line 255: `eventPublisher.publishEvent(new InstructorJobCompletedEvent(this, saved));` — fires after every background job completes.
+- Lines 309–340: `MISSION_GENERATE` case branches on `flowType`: `RESOLUTION` yields a JSON-object prompt for resolved mission IDs; anything else (`FAILURE`) yields a JSON-array prompt for pain point descriptions.
+
+Consumer chain confirmed by grep:
+- `InstructorJobCompletedEvent` has exactly **one consumer**: `MissionJobListener.onInstructorJobCompleted()` — production code shipped in this PR, not a test stub.
+- `MissionJobListener` calls `remediationService.handleMissionGenerationResult()` which parses the Gemini response and writes `Mission` documents.
+- `MISSION_GENERATE` is called by `RemediationServiceImpl.handleFailure()` (line 77) with `flowType=FAILURE` and `handlePass()` (line 132) with `flowType=RESOLUTION`.
+- Both `handleFailure` and `handlePass` are tested and passing (`testFailureFlow_CreatesNewMission`, `testResolutionFlow_ResolvesMissions`).
+
+**This is not DrillRequestedEvent.** DrillRequestedEvent had no consumer anywhere in the codebase. `InstructorJobCompletedEvent` has a live, deployed consumer (`MissionJobListener`) that actively depends on it. The end-to-end chain from `MISSION_GENERATE` job → Gemini call → `InstructorJobCompletedEvent` → `MissionJobListener` → `handleMissionGenerationResult` → `Mission` document write is fully wired. Only the upstream entry point is missing: the listeners that call `remediationService.handleFailure/handlePass` in response to `DrillPassedEvent` and `BuildCompletedEvent`. That is the partner's explicit NOT YET DONE item.
+
+**Known tracked gap (for permanent record):** `RemediationServiceTest.testDrillPassedEvent_TriggersRemediationPass` and `RemediationServiceTest.testBuildCompletedEvent_TriggersRemediationFailure` are intentionally red. They document the intended behaviour of two missing event handlers in `InstructorEventListener`: one that calls `remediationService.handlePass(studentId, conceptId, drillId)` on `DrillPassedEvent`, and one that calls `remediationService.handleFailure(studentId, conceptId, "BUILD", attemptData)` on `BuildCompletedEvent(passed=false)`. Once those two handlers are added, all four `RemediationServiceTest` tests will pass with no further changes. This is tracked explicitly here so the red count is not unexplained in CI.
+
+### FAILED
+- None.
+
+### VERIFICATION NEEDED
+- None. Cleared for push.
+
+### NOT YET DONE
+- N/A.
