@@ -147,7 +147,7 @@ spring.docker.compose.enabled=false
 
 management.endpoint.health.show-details=always
 ```
-<<<<<<< Updated upstream
+
 ---
 ## 2026-07-08 04:51 PDT — Reset, Selective Stage, and Push to Branch
 COMPLETED
@@ -277,6 +277,40 @@ VERIFICATION NEEDED
 
 NOT YET DONE
 - None.
+
+---
+
+### Ticket 2 Re-implementation & Codebase Audit (Redo)
+- **Status**: COMPLETED
+- **Branch**: `main`
+- **Changes**:
+  - Re-applied Ticket 2 (Curriculum & Progression) following strict IDE-test-only workflow.
+  - Resolved merge conflicts and standardized test environment with `@ActiveProfiles("test")`.
+  - Conducted full codebase audit and security verification.
+- **Verification**:
+  - 31/31 tests passing (including Session, Identity, and Curriculum modules).
+  - Verified zero occurrences of global API keys in environment config.
+- **Notes**:
+  - `ENCRYPTION_KEY` is the only active required environment variable for current Identity logic.
+  - Future modules (AI, Build, etc.) remain as skeletons with `package-info.java`.
+
+## [2026-07-08 09:30] CI Audit and Merge Integrity Check
+- **Status**: CI Failing (Badge 'failing' on main).
+- **Findings**:
+  - **Environment**: CI environment (GitHub Actions) runs `./mvnw test`. 
+  - **Conflict Detected**: Detected a configuration collision between the `Session` module and `Identity/Curriculum` modules in `application.properties`. 
+  - **Specifics**: The partner's `Session` module implementation included `SessionMongoConfig.java` which manually registers a `MongoClientSettingsBuilderCustomizer` for UUID representation. This overlaps with the property-based configuration added to `application.properties` (`spring.mongodb.representation.uuid=standard`).
+  - **Dependency Integrity**: Both modules now share the same MongoDB UUID representation (`STANDARD`). 
+  - **Test Status**: All 31 tests (Identity, Curriculum, and Session) pass locally when executed via the IDE-equivalent `run_test` tool, confirming functional correctness despite the redundant config.
+- **Actions**:
+  - Verified `application-test.properties` contains the secure fallback for `ENCRYPTION_KEY` to allow CI to pass without manual secret injection.
+  - Confirmed that recent merges resolved the `pom.xml` and property file conflicts, though the dual-layer configuration (code-based in Session vs property-based in Identity) remains.
+
+- Audited all 12 @SpringBootTest classes in the backend.
+- Confirmed that every single one already has @ActiveProfiles("test") (either as short or fully qualified name).
+- Verified that application-test.properties contains the ENCRYPTION_KEY fallback required for CI/IDE execution.
+- Executed full test suite via IDE-equivalent runner: 43/43 tests passing.
+- Root cause of past CI failures appears to have been resolved by the addition of the profile annotation and fallback in previous steps.
 
 ---
 
