@@ -1630,6 +1630,71 @@ A comparison of the codebase against `docs/Merge_Final_PRD_v2.0.md` and `docs/AG
 
 ### NOT YET DONE
 - Real Judge0 connection (currently blocked by registry TLS timeout issues).
+<!-- Partner entries below are in CEST (UTC+2), equivalent to PDT+9. Wall-clock order: their 19:10–19:30 CEST = 10:10–10:30 PDT, which precedes our 12:05 PDT entry; entries kept as contiguous blocks rather than interleaved. -->
+
+## 2026-07-09 19:10 CEST — Build the Remediation Service module (Mission) - Part 1
+
+COMPLETED
+- Created branch `feature/mission-schema` off the default branch `main`.
+- Implemented `Mission` and `AttemptHistoryEntry` document schemas mapping Concept, Student, AI-generated pain point description, and attempt history fields.
+- Implemented `MissionRepository` for database query operations.
+
+FAILED
+- None.
+
+VERIFICATION NEEDED
+- None.
+
+NOT YET DONE
+- Failure flow handling (generation on Drill/Concept_build failure).
+- Resolution flow handling (resolution on Drill/Concept_build pass).
+- Wiring direct calls from Practice/Build and Gating modules.
+
+---
+
+## 2026-07-09 19:20 CEST — Build the Remediation Service module (Mission) - Part 2
+
+COMPLETED
+- Created branch `feature/mission-failure-flow` off `main`.
+- Checked out schema files from `feature/mission-schema`.
+- Implemented `handleFailure` in `RemediationServiceImpl` to manage the failure flow using a single combined prompt.
+- Published `InstructorJobCompletedEvent` from `InstructorServiceImpl` on background task completion.
+- Implemented `MissionJobListener` to react to `MISSION_GENERATE` job completions, parsing JSON arrays containing pain points and saving or updating `Mission` records in MongoDB.
+- Wrote integration tests for failure flow in `RemediationServiceTest.java`.
+- Ran all tests successfully.
+
+FAILED
+- None.
+
+VERIFICATION NEEDED
+- None.
+
+NOT YET DONE
+- Resolution flow handling (resolution on Drill/Concept_build pass).
+- Wiring direct calls from Practice/Build and Gating modules.
+
+---
+
+## 2026-07-09 19:30 CEST — Build the Remediation Service module (Mission) - Part 3
+
+COMPLETED
+- Created branch `feature/mission-resolution-flow` off `main`.
+- Checked out schema and failure-flow files from `feature/mission-failure-flow`.
+- Implemented `handlePass` in `RemediationServiceImpl` to manage the resolution flow.
+- Added `RESOLUTION` flowType support in `handleMissionGenerationResult` to parse list of resolved mission IDs and update their `passed` field to `true`.
+- Added test case `testResolutionFlow_ResolvesMissions` in `RemediationServiceTest.java`.
+- Updated `InstructorServiceTest.java` to make the Redis pop assertion robust against the background queue worker thread.
+- Ran all tests successfully.
+
+FAILED
+- None.
+
+VERIFICATION NEEDED
+- None.
+
+NOT YET DONE
+- Wiring direct calls from Practice/Build and Gating modules.
+
 
 
 
