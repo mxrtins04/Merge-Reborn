@@ -21,6 +21,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
+import org.springframework.test.context.ActiveProfiles;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -28,6 +30,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(properties = "gemini.api.key=mock")
+@ActiveProfiles("test")
 @Import(TestcontainersConfiguration.class)
 public class InstructorServiceTest {
 
