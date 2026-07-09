@@ -1540,5 +1540,70 @@ VERIFICATION NEEDED
 NOT YET DONE
 - Wiring direct calls from Practice/Build and Gating modules.
 
+---
+
+## 2026-07-09 22:48 CEST — Build the Project and Eligibility Service module - Part 1
+
+COMPLETED
+- Created branch `feature/project-schema` off the default branch `main`.
+- Implemented `ProjectStatus` enum containing `PENDING`, `APPROVED`, and `REJECTED` states.
+- Implemented `Project` MongoDB document model containing `id`, `studentId`, `given`, `link`, `prd`, `review`, and `status`.
+- Created `ProjectRepository` interface.
+
+FAILED
+- None.
+
+VERIFICATION NEEDED
+- None.
+
+NOT YET DONE
+- Build approval flow that updates `Student.internshipEligible`.
+
+---
+
+## 2026-07-09 23:25 CEST — Build the Project and Eligibility Service module - Part 2
+
+COMPLETED
+- Created branch `feature/project-approval-flow` off `main`.
+- Implemented `ProjectService` interface and `ProjectServiceImpl` to manage project submissions and transition status.
+- Implemented the approval workflow: when a project status is transitioned to `APPROVED`, the associated student is loaded, and if their `internshipEligible` flag is not yet set, it is set to `true` (idempotent, one-directional, independent of curriculum progress).
+- Modified `ProjectServiceTest` to clean up the `Student` repository in MongoDB before each test to prevent unique key `email: null` index collisions.
+- Checked out `RemediationIntegrationListener` from `feature/mission-integration` to restore compilation/success of remediation tests on the current branch.
+- Verified that the full integration and unit test suite runs successfully with all 139 tests passing.
+
+FAILED
+- None.
+
+VERIFICATION NEEDED
+- None. All tests passed successfully.
+
+NOT YET DONE
+- None. All tasks completed.
+
+---
+
+## 2026-07-09 23:36 CEST — Build the Project and Eligibility Service module - Part 3
+
+COMPLETED
+- Created branch `feature/project-integration` off the default branch `main`.
+- Checked out and synchronized files from previous parts to ensure compilation.
+- Designed and implemented request/response DTOs: `CreateProjectRequest`, `UpdateProjectStatusRequest`, and `ProjectResponse`.
+- Implemented `ProjectController` to expose REST endpoints:
+  - `POST /api/v1/projects` (creates a project submission for the authenticated student)
+  - `GET /api/v1/projects/{id}` (fetches project by ID)
+  - `GET /api/v1/projects` (gets all project submissions for the authenticated student)
+  - `PUT /api/v1/projects/{id}/status` (transitions the project status, triggering the student's eligibility update on `APPROVED`)
+- Implemented `ProjectControllerTest` covering the full end-to-end REST lifecycle, verifying project submission, querying, status updates, and checking that student eligibility correctly updates on project approval.
+- Verified that all 140 tests in the test suite run successfully and pass.
+
+FAILED
+- None.
+
+VERIFICATION NEEDED
+- None. All tests passed successfully.
+
+NOT YET DONE
+- None. All tasks completed.
+
 
 
