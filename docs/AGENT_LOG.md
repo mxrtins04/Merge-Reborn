@@ -147,6 +147,7 @@ spring.docker.compose.enabled=false
 
 management.endpoint.health.show-details=always
 ```
+
 ---
 ## 2026-07-08 04:51 PDT — Reset, Selective Stage, and Push to Branch
 COMPLETED
@@ -276,6 +277,8 @@ VERIFICATION NEEDED
 
 NOT YET DONE
 - None.
+
+---
 
 ### Ticket 2 Re-implementation & Codebase Audit (Redo)
 - **Status**: COMPLETED
@@ -456,6 +459,30 @@ Waiting for engineer confirmation before any of the above changes.
 - Task 16: .env.example update
 - Task 17: Full test suite run
 - All of the above pending engineer confirmation on task 3 (auth model shape), since the controller tests and auth tests depend on knowing which entity holds email.
+
+---
+
+## 2026-07-09 10:46 CEST — Build the AI Orchestration module (Instructor)
+
+COMPLETED
+- Resolved two pre-existing compilation errors blocking test execution by making `IdleSessionSweeper` and its `closeIdleSessions()` method public.
+- Updated `pom.xml` to include missing `spring-boot-starter-validation` and `spring-boot-starter-data-redis` dependencies.
+- Added a Redis Container to `TestcontainersConfiguration.java` to support integration tests of Redis-backed features.
+- Implemented `ConceptBuild` model and `ConceptBuildRepository` under `com.merge.merge.build` as stubs for gating checks.
+- Created `RedisTaskQueue` in `com.merge.merge.shared.queue` as a minimal shared task queue abstraction using Redis List operations.
+- Built a native Gemini API integration (`GeminiRequest`, `GeminiResponse`, `GeminiClient` in `com.merge.merge.integration.gemini`) with an automatic mock fallback when `gemini.api.key=mock`.
+- Defined `InstructorActionType`, `InstructorStatus`, `Instructor` entity, and `InstructorRepository` under `com.merge.merge.ai`.
+- Implemented `InstructorService` and `InstructorServiceImpl` supporting all 9 action types: sync (DRILL_GENERATE, COMPREHENSION_GENERATE, CHAT_INTERACTION) and async (BUILD_PRD_GENERATE, AUDIO_REINFORCE, AUDIO_PRIME, MISSION_GENERATE, CLEAN_CODE_REVIEW, REFLECT).
+- Implemented a unified `InstructorEventListener` and `InstructorQueueWorker` (polls Redis queue, executes async tasks).
+- Exposed `GET /submissions/{id}` in `InstructorController` for frontend polling.
+- Wrote full unit/integration test coverage in `InstructorServiceTest.java`.
+- Added default Gemini properties to `application.properties` (`gemini.api.key=mock`, `gemini.model=gemini-1.5-flash`).
+
+FAILED
+- None.
+
+NOT YET DONE
+- Concrete JSON schema mapping of `Context.personalisedData` (tracked via GitHub Issue #2).
 
 ---
 
