@@ -1,168 +1,225 @@
-# Merge — Reverse-Engineered PRD for the 4 Core Modules
+# Product Requirement Document (PRD): Session Module (Reverse Engineered)
 
-This document serves as the reverse-engineered Product Requirement Document (PRD) detailing the technical specifications, domain models, business logic, API contracts, and integration flows for the four core modules implemented in the Merge monolith:
-1. **Identity & Personalization** (Student, Context, E.Profile)
-2. **Practice** (Drills & Submissions)
-3. **Remediation** (Missions & AI Diagnostics)
-4. **Project & Eligibility** (Projects & Internship Gating)
+## 1. Document Overview
+This document represents the reverse-engineered Product Requirement Document (PRD) for the **Session Module** of the Merge application. It defines the core capabilities, domain entity schema, business constraints, API endpoints, background processes, and system interactions derived directly from the current production codebase.
 
 ---
 
-## 1. Identity & Personalization Module
-
-The Identity module acts as the core registration, profiling, and personalization engine. It manages student accounts, their dynamic learning context, and their engineering skills assessment.
-
-### 1.1 Domain Schema
-* **Student**
-  * `id` (`UUID`, PK): Unique student identifier.
-  * `email` (`String`, Unique Index): Enforced unique index at the database level.
-  * `passwordHash` (`String`): BCrypt hash (strength 12), never returned in any response DTO.
-  * `name` (`String`): The student's name.
-  * `details` (`String`): Student bio or details.
-  * `xp` (`int`): Total accumulated experience points.
-  * `stageId` (`UUID`): FK → Stage (current curriculum level).
-  * `internshipEligible` (`boolean`): One-way gating flag set to `true` upon Project approval.
-* **Context** (1:1 with Student)
-  * `id` (`UUID`, PK): Unique context identifier.
-  * `studentId` (`UUID`, FK → Student): Index-enforced unique reference.
-  * `personalisedData` (`JSON`):
-    * `staticData`: Sourced from initial scout ingestion (write-once learning styles, goals).
-    * `dynamicData`: Tracks failed concepts (`FailedConcept` array: conceptId, knowledgeGap description, failedAt timestamp), successful mission approaches, average submission duration, and learning preferences.
-* **E.Profile** (1:1 with Student)
-  * `id` (`UUID`, PK): Unique profile identifier.
-  * `studentId` (`UUID`, FK → Student): Index-enforced unique reference.
-  * `competencyData` (`JSON`): Tracks SFIA skills scores (8 dimensions), project completion rates, consistency scores, Level of Thinking, and Novelty of Thinking assessments.
-
-### 1.2 Core Business Rules
-* **XP Non-Negative**: Student XP increments atomically using MongoDB `$inc` (`findAndModify`) to prevent lost-update races. XP cannot be set to a negative value.
-* **One-Way Internship Eligibility**: `internshipEligible` starts as `false` and can only transition to `true` via Project approval. There is no code path or endpoint to revoke eligibility once granted.
-* **Opt-In Response Protection**: Any sensitive authentication fields (like `passwordHash` and `email`) are never returned in response DTOs. They are filtered out by the explicit mapping in `StudentResponse.from()`.
-
-### 1.3 HTTP REST Endpoints
-* `GET /api/v1/students/me`
-  * **Role**: Authenticated Student.
-  * **Response**: Returns a `StudentResponse` (excludes `passwordHash` and `email` for security).
-* `GET /api/v1/students/me/profile`
-  * **Role**: Authenticated Student.
-  * **Response**: Returns the student's `EProfileResponse` (competency data).
+## 2. Product Goals & Objectives
+The Session Module acts as the state manager for a student's active learning lifecycle. Its key objectives are:
+1. **Lifecycle Tracking**: Monitor when a student starts learning, logs activities, and ends their session.
+2. **Path Logging**: Progressively record a chronological ledger of actions, results, and emotional states (mood) of the student during the session.
+3. **Guardrails**: Prevent concurrent active sessions for a single student to maintain clean state isolation.
+4. **Resource Reclamation**: Automatically clean up and close orphaned/stale sessions (e.g., from closed tabs, disconnected devices, or inactive students).
 
 ---
 
-## 2. Practice (Drill) Module
+## 3. Core Entities & Domain Models
 
-The Practice module provides comprehension-checking questions (Drills) generated dynamically based on active concepts.
+### 3.1. Session Document (Collection: `sessions`)
+The primary document model stored in MongoDB.
 
-### 2.1 Domain Schema
-* **Drill**
-  * `id` (`UUID`, PK): Unique drill identifier.
-  * `conceptId` (`UUID`, FK → Concept)
-  * `studentId` (`UUID`, FK → Student)
-  * `question` (`String`): The question text.
-  * `answer` (`String`): Server-side expected answer. **NEVER** returned in any response DTO.
-  * `passed` (`boolean`): Set to `true` if the submission was correct and in time.
-  * `xpAwarded` (`int`): Experience points awarded on passing.
-  * `feedback` (`String`): AI-generated explanation returned upon passing.
-  * `status` (`SubmissionStatus`): Lifecycle status (`PENDING`, `PASSED`, `FAILED`, `EXPIRED`).
-  * `serverDeadline` (`Instant`): Hard constraint (creation time + 10 seconds).
-  * `answeredAt` (`Instant`): Submission timestamp.
-  * `idempotencyKey` (`String`): Clientside unique string for duplicate submit prevention.
-  * `pasteAttempted` (`boolean`): Anti-cheat diagnostic flag (does not block submission).
-  * `tabFocusLost` (`int`): Anti-cheat focus loss counter (does not block submission).
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `id` | `UUID` | Primary Key. |
+| `studentId` | `UUID` | Reference to the student owning this session. |
+| `startedAt` | `Instant` | The timestamp when the session path recorded its first activity (initially null). |
+| `lastActivityAt` | `Instant` | The timestamp of the last activity appended to the path. Used for idle sweeping. |
+| `endedAt` | `Instant` | The timestamp when the session was closed. Null indicates an active/open session. |
+| `endReason` | `EndReason` | The categorized reason why the session was ended. |
+| `mood` | `Mood` | The student's initial reported emotional state. |
+| `type` | `SessionType` | Derived category of the session. |
+| `path` | `List<PathEntry>` | List of chronological activities/steps taken by the student. |
 
-### 2.2 Core Business Rules
-* **10-Second Time Constraint**: Drill submissions arriving after the `serverDeadline` are automatically flagged as `EXPIRED` / `FAILED`, regardless of answer accuracy.
-* **Trimmed Case-Insensitive Matching**: Submission answers are compared against the target answer by trimming trailing/leading whitespaces and ignoring case.
-* **Single XP Award**: Drill XP is paid out exactly once. Retries do not award additional XP.
-* **Idempotent Submission**: Duplicate requests containing the same `idempotencyKey` are short-circuited, returning the already persisted evaluation result.
-* **Anti-Cheat Diagnostics**: Paste detection and tab focus lost metrics are tracked solely as audit evidence and do not alter evaluation logic.
+### 3.2. PathEntry (Value Object)
+Represents a singular action taken by the student during the session.
 
-### 2.3 HTTP REST Endpoints
-* `POST /api/v1/drills`
-  * **Request**: `CreateProjectRequest` containing `conceptId`.
-  * **Response**: A new `DrillResponse` containing the `question` (excluding `answer`).
-* `POST /api/v1/drills/{id}/submit`
-  * **Request**: `SubmitDrillRequest` containing the `answer`, `idempotencyKey`, `pasteAttempted` flag, and `tabFocusLost` count.
-  * **Response**: Evaluated `DrillResponse` with `passed` status and feedback.
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `actionType` | `ActionType` | The type of action performed (e.g., CONCEPT_READ, DRILL_ATTEMPT). |
+| `conceptId` | `UUID` | Reference to the Concept the student is interacting with. |
+| `timestamp` | `Instant` | The exact time the action occurred. |
+| `result` | `Result` | The outcome of the action (e.g., PASSED, FAILED). |
+| `moodAtAction` | `Mood` | Emotional state of the student during the specific action. |
+| `wasRequired` | `Boolean` | Flag indicating if this action was mandatory in the progression path. |
+| `topicRelevance` | `TopicRelevance` | Semantic relevance classification. |
+| `inquiryDepth` | `InquiryDepth` | The depth level of the learning query. |
+
+### 3.3. Key Enums
+
+#### EndReason
+- `NAVIGATED_AWAY`: Student explicitly closed or navigated away (Client settable).
+- `EXHAUSTED`: Student ended the session due to cognitive fatigue (Client settable).
+- `COMPLETED`: Session closed automatically after successfully passing a target milestone (System set).
+- `IDLE_TIMEOUT`: Session closed by background sweep due to inactivity (System set).
+
+#### Mood
+- `FRESH`
+- `OKAY`
+- `EXHAUSTED`
+
+#### SessionType
+- `FULL_FORCE`: Standard, high-energy session derived from `FRESH` or `OKAY` initial mood.
+- `EXHAUSTED`: Low-intensity session derived from `EXHAUSTED` initial mood.
 
 ---
 
-## 3. Remediation (Mission) Module
+## 4. Functional Requirements & Core Workflows
 
-The Remediation module manages personalized recovery paths (Missions) for concepts where the student is struggling.
+### 4.1. Session Initialization
+- **Rule**: A student may have at most **one** open session (`endedAt == null`) at any time.
+- **Workflow**: 
+  - Check if an open session already exists for the `studentId`.
+  - If yes, return the existing open session.
+  - If no, initialize a new `Session` with a new `UUID`, `startedAt = null`, `lastActivityAt = Instant.now()`, and empty `path`.
+  - Derive `SessionType` automatically based on the reported `Mood`:
+    - `FRESH` or `OKAY` → `FULL_FORCE`
+    - `EXHAUSTED` → `EXHAUSTED`
+- **Race Condition Guard**: The database enforces uniqueness. If concurrent requests try to initialize an open session, a MongoDB `DuplicateKeyException` is caught, and the service falls back to returning the already saved open session.
 
-### 3.1 Domain Schema
-* **Mission**
-  * `id` (`UUID`, PK): Unique mission identifier.
-  * `conceptId` (`UUID`, FK → Concept)
-  * `studentId` (`UUID`, FK → Student)
-  * `painPointDescription` (`String`): AI-identified specific conceptual misunderstanding.
-  * `conceptAndContext` (`String`): AI-generated personalized advice and corrective content.
-  * `attemptHistory` (`List<AttemptHistoryEntry>`): Array of failed attempt details and timestamps.
-  * `passed` (`boolean`): Indicates whether the mission has been successfully resolved.
-  * `createdAt`, `updatedAt` (`Instant`)
+### 4.2. Session Path Entry Appending
+- **Workflow**:
+  - Whenever a student performs an action, a new `PathEntry` is appended to the session `path`.
+  - If `startedAt` is currently null, it is set to the timestamp of this first path entry.
+  - `lastActivityAt` is updated to the current timestamp.
 
-### 3.2 Core Business Rules
-* **Failure Flow (handleFailure)**: Triggers when a student fails a Drill or Concept Build. Gathers the student's open missions for the concept, builds a payload combining contextual personalized data and failed attempts, and invokes Gemini. Gemini decides whether to match the new failure to an existing open mission (appending it to `attemptHistory` and updating advice) or generate a new `Mission` record.
-* **Resolution Flow (handlePass)**: Triggers when a student passes a Drill or Concept Build. Gathers open missions for the concept, builds a payload, and invokes Gemini to evaluate whether the passing submission resolves any open missions. The matched missions have their `passed` flag set to `true`.
-* **Asynchronous Integration**: The Remediation module processes LLM generation asynchronously via the job queue worker (`InstructorQueueWorker`) to prevent blocking HTTP threads.
+### 4.3. Explicit Session Termination (REST API)
+- **Workflow**:
+  - A client sends a request to close the session explicitly.
+  - Only `NAVIGATED_AWAY` and `EXHAUSTED` are valid client-settable reasons.
+  - The system updates `endedAt = Instant.now()` and saves the session.
+  - Subsequent end requests on the same session ID fail with a conflict.
+
+### 4.4. Idle Session Cleanup Sweeper (Background Worker)
+- **Rationale**: Students often close their browsers or shut down their devices without triggering an explicit close event.
+- **Rule**: Sessions with no recorded activity for **5 minutes** are considered stale and must be reclaimed.
+- **Workflow**:
+  - A periodic task runs every **5 minutes** (`fixedDelay = 300000ms`).
+  - Queries all sessions where `endedAt == null` and `lastActivityAt < (Instant.now() - 5 minutes)`.
+  - For each stale session, sets `endedAt = Instant.now()` and `endReason = EndReason.IDLE_TIMEOUT`.
+
+---
+
+## 5. Database & Indexing Constraints
+To enforce the concurrency guardrail, MongoDB specifies a unique partial compound index on the `sessions` collection:
+
+```javascript
+db.sessions.createIndex(
+  { "studentId": 1 },
+  { 
+    name: "unique_open_session_per_student",
+    unique: true, 
+    partialFilterExpression: { "endedAt": { "$eq": null } } 
+  }
+)
+```
+This guarantees that while multiple historical closed sessions (`endedAt != null`) can exist for a student, only one document per `studentId` can exist where `endedAt` is null.
+
+---
+
+## 6. API Specifications
+
+### 6.1. End Active Session
+- **Endpoint**: `POST /sessions/{id}/end`
+- **Request Body**:
+  ```json
+  {
+    "reason": "NAVIGATED_AWAY"
+  }
+  ```
+- **Responses**:
+  - `200 OK`: Returns the updated `Session` object.
+  - `400 Bad Request`: If the reason is invalid or not client-settable (e.g., `COMPLETED` or `IDLE_TIMEOUT`).
+  - `404 Not Found`: If the session ID does not exist.
+  - `409 Conflict`: If the session has already been ended.
+
+---
+
+## 7. Sequence Diagrams
+
+### 7.1. Flow A: Session Initialization & Activity Path Logging
+Shows the flow of launching a session and logging student activities.
 
 ```mermaid
 sequenceDiagram
-    participant P as Practice / Build
-    participant L as RemediationListener
-    participant S as RemediationService
-    participant I as InstructorService (Queue)
-    participant G as Gemini LLM
-    participant M as MongoDB
+    autonumber
+    actor Student as Student (UI)
+    participant Ctrl as SessionController/Service
+    participant DB as MongoDB (sessions)
 
-    P->>L: Publish DrillPassed / BuildCompleted Event
-    L->>S: Invokes handlePass / handleFailure
-    S->>I: Enqueues MISSION_GENERATE Job
-    Note over I: InstructorQueueWorker processes Job asynchronously
-    I->>G: Send Combined Context Prompt
-    G-->>I: Return JSON Response
-    I->>S: Publish InstructorJobCompletedEvent
-    S->>M: Save/Update Mission records (passed = true/create new)
+    Student->>Ctrl: Request getOrCreateOpenSession(studentId, initialMood)
+    Ctrl->>DB: Query open session (endedAt == null)
+    alt Open session exists
+        DB-->>Ctrl: Return existing Session
+        Ctrl-->>Student: Return existing Session
+    else No open session exists
+        Ctrl->>DB: Save new Session (endedAt=null, path=[], lastActivityAt=now)
+        note over Ctrl,DB: Unique Compound Index guards concurrency
+        DB-->>Ctrl: Saved Session
+        Ctrl-->>Student: Return new Session
+    end
+
+    opt Student performs activity
+        Student->>Ctrl: Trigger Action (e.g. read concept, take drill)
+        Ctrl->>DB: Append PathEntry to path, update lastActivityAt = now
+        note over Ctrl,DB: Set startedAt = now if first entry
+        DB-->>Ctrl: Saved updated Session
+    end
 ```
 
----
+### 7.2. Flow B: Explicit Client Termination
+Shows the flow of closing a session explicitly via the API.
 
-## 4. Project & Eligibility Module
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Student as Student (UI)
+    participant Ctrl as SessionController
+    participant Svc as SessionService
+    participant DB as MongoDB (sessions)
 
-The Project module manages capstone projects and acts as the gatekeeper for student internship eligibility.
+    Student->>Ctrl: POST /sessions/{id}/end { "reason": "NAVIGATED_AWAY" }
+    alt Reason is not NAVIGATED_AWAY or EXHAUSTED
+        Ctrl-->>Student: 400 Bad Request
+    else Valid client reason
+        Ctrl->>Svc: endSession(id, reason)
+        Svc->>DB: Query Session by id
+        alt Session not found
+            DB-->>Svc: Empty Optional
+            Svc-->>Ctrl: Throw SessionNotFoundException
+            Ctrl-->>Student: 404 Not Found
+        else Session already closed (endedAt != null)
+            DB-->>Svc: Return Session
+            Svc-->>Ctrl: Throw SessionAlreadyEndedException
+            Ctrl-->>Student: 409 Conflict
+        else Session is open (endedAt == null)
+            DB-->>Svc: Return Session
+            Svc->>DB: Save Session (endedAt = now, endReason = reason)
+            DB-->>Svc: Saved Session
+            Svc-->>Ctrl: Return ended Session
+            Ctrl-->>Student: 200 OK (updated Session)
+        end
+    end
+```
 
-### 4.1 Domain Schema
-* **Project**
-  * `id` (`UUID`, PK): Unique project identifier.
-  * `studentId` (`UUID`, FK → Student): Reference to the submitting student.
-  * `given` (`String`): The assignment instructions (sourced externally and manually curated).
-  * `link` (`String`): The submission link (e.g. GitHub repository URL).
-  * `prd` (`String`): Product Requirements Document text.
-  * `review` (`String`): Free-text reviewer assessment notes.
-  * `status` (`ProjectStatus`): Current review status (`PENDING`, `APPROVED`, `REJECTED`). Defaults to `PENDING` on creation.
-  * `createdAt`, `updatedAt` (`Instant`)
+### 7.3. Flow C: Scheduled Background Idle Sweeper
+Shows the background sweeper cleaning up stale sessions in the background.
 
-### 4.2 Core Business Rules
-* **Manual Curated Content**: The `given` field is strictly curated and externally sourced. No AI generation is used for projects.
-* **Status-Driven Eligibility Gating**: On status transitioning to `APPROVED`, the associated student is loaded. If `Student.internshipEligible` is `false`, it flips to `true` and saves.
-* **Eligibility Rules**:
-  > [!IMPORTANT]
-  > 1. **Idempotent**: Approving additional projects for an already eligible student is a no-op and does not error.
-  > 2. **One-Directional**: The `internshipEligible` flag can never transition back to `false` (no revocation logic exists).
-  > 3. **Progress Independent**: Gating is driven solely by Project status. No concept, level, or XP thresholds are checked.
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Sweeper as IdleSessionSweeper
+    participant DB as MongoDB (sessions)
 
-### 4.3 HTTP REST Endpoints
-* `POST /api/v1/projects`
-  * **Role**: Authenticated Student.
-  * **Request**: `CreateProjectRequest` containing `given`, `link`, `prd`.
-  * **Response**: `ProjectResponse` with status `PENDING`.
-* `GET /api/v1/projects/{id}`
-  * **Role**: Authenticated Student / Reviewer.
-  * **Response**: Returns the `ProjectResponse` details.
-* `GET /api/v1/projects`
-  * **Role**: Authenticated Student.
-  * **Response**: Returns list of project submissions for the student.
-* `PUT /api/v1/projects/{id}/status`
-  * **Role**: Reviewer / Admin.
-  * **Request**: `UpdateProjectStatusRequest` containing `status` (`APPROVED`/`REJECTED`) and `review` comments.
-  * **Response**: Updated `ProjectResponse`, triggering the eligibility flow on approval.
+    note over Sweeper: Scheduled trigger every 5 minutes
+    Sweeper->>DB: Query open sessions where lastActivityAt < (now - 5 min)
+    alt No stale sessions found
+        DB-->>Sweeper: Return empty list
+    else Stale sessions found
+        DB-->>Sweeper: Return List<Session>
+        loop For each stale session
+            Sweeper->>DB: Save Session (endedAt = now, endReason = IDLE_TIMEOUT)
+            DB-->>Sweeper: Confirmed
+        end
+    end
+```
