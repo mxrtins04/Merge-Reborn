@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 48" fill="none">
+  <defs>
+    <linearGradient id="m-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1E40AF"/>
+      <stop offset="50%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#60A5FA"/>
+    </linearGradient>
+  </defs>
+
+  <!-- M with gradient -->
+  <text
+    x="0"
+    y="38"
+    font-family="'Hanken Grotesk', sans-serif"
+    font-weight="800"
+    font-size="42"
+    letter-spacing="4"
+    fill="url(#m-grad)"
+  >M</text>
+
+  <!-- ERGE in white -->
+  <text
+    x="31"
+    y="38"
+    font-family="'Hanken Grotesk', sans-serif"
+    font-weight="800"
+    font-size="42"
+    letter-spacing="4"
+    fill="#E1E2EC"
+  >ERGE</text>
+</svg>

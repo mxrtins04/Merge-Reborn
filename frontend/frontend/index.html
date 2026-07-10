@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0D0F12" />
+    <meta name="description" content="Merge is an Engineering Formation Platform designed to transform university students into trusted software engineers through deliberate, hands-on training." />
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    
+    
+    <!-- Load Tailwind CSS from CDN to match Concepts Reference exactly -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+              "background": "transparent",
+              "surface": "#161A22",
+              "surface-container": "#161A22",
+              "surface-container-low": "#1B202A",
+              "surface-container-high": "#1B202A",
+              "outline": "#2A2F39",
+              "outline-variant": "#2A2F39",
+              "primary": "#adc6ff",
+              "primary-container": "#2A2F39",
+              "on-primary": "#0F1117",
+              "on-surface": "#F4F6F8",
+              "on-surface-variant": "#9AA3AF",
+              "secondary": "#9AA3AF",
+              "on-secondary": "#161A22",
+              "muted": "#6B7280",
+              "error": "#ffb4ab",
+              "error-container": "#93000a"
+            },
+            "borderRadius": {
+              "DEFAULT": "8px",
+              "lg": "8px",
+              "xl": "8px",
+              "full": "9999px"
+            },
+            "spacing": {
+              "sidebar-width": "260px",
+              "margin-md": "24px",
+              "unit": "4px",
+              "margin-sm": "12px",
+              "header-height": "48px",
+              "gutter": "1px"
+            },
+            "fontFamily": {
+              "display": ["Inter", "sans-serif"],
+              "body-md": ["Inter", "sans-serif"],
+              "headline-md": ["Inter", "sans-serif"],
+              "headline-lg": ["Inter", "sans-serif"],
+              "body-lg": ["Inter", "sans-serif"],
+              "label-caps": ["JetBrains Mono", "monospace"],
+              "mono-code": ["JetBrains Mono", "monospace"]
+            },
+            "fontSize": {
+              "display": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+              "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+              "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+              "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+              "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+              "label-caps": ["11px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+              "mono-code": ["13px", {"lineHeight": "20px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+    <title>ENGINEER_OS | Dashboard</title>
+  </head>
+  <body class="font-body-md text-body-md">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
