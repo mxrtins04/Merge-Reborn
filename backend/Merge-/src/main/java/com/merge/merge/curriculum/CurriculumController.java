@@ -1,6 +1,7 @@
 package com.merge.merge.curriculum;
 
 import com.merge.merge.curriculum.dto.ConceptResponse;
+import com.merge.merge.curriculum.dto.NextConceptResult;
 import com.merge.merge.curriculum.dto.ResourceResponse;
 import com.merge.merge.curriculum.dto.StageResponse;
 import com.merge.merge.curriculum.service.ConceptService;
@@ -8,6 +9,7 @@ import com.merge.merge.curriculum.service.ResourceService;
 import com.merge.merge.curriculum.service.StageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -70,6 +72,13 @@ class CurriculumController {
                 .map(ConceptResponse::from)
                 .toList();
         return ResponseEntity.ok(concepts);
+    }
+
+    @GetMapping("/concepts/next")
+    ResponseEntity<NextConceptResult> getNextConcept(Authentication authentication) {
+        UUID studentId = (UUID) authentication.getPrincipal();
+        NextConceptResult nextConcept = conceptService.getNextConcept(studentId);
+        return ResponseEntity.ok(nextConcept);
     }
 
     @GetMapping("/concepts/{id}")

@@ -56,7 +56,7 @@ import java.util.UUID;
 public class DrillServiceImpl implements DrillService {
 
     static final int DRILL_XP = 10;
-    static final long DEADLINE_SECONDS = 10;
+    static final long DEADLINE_SECONDS = 600; // 10 minutes
 
     private final DrillRepository drillRepository;
     private final InstructorService instructorService;
@@ -158,15 +158,14 @@ public class DrillServiceImpl implements DrillService {
             return resolveAsFail(drill, "Submission arrived after the server deadline.");
         }
 
-        // 6. Answer comparison — trimmed + case-insensitive.
-        String submitted = request.answer().trim().toLowerCase();
-        String expected = drill.getAnswer().trim().toLowerCase();
-        boolean correct = submitted.equals(expected);
+        // 6. Use Gemini to evaluate the answer semantically.
+        boolean correct = instructorService.evaluateDrillAnswer(
+                studentId, drill.getConceptId(), drill.getQuestion(), drill.getAnswer(), request.answer());
 
         if (correct) {
             return resolveAsPass(drill);
         } else {
-            return resolveAsFail(drill, "Answer did not match.");
+            return resolveAsFail(drill, "Your answer didn't demonstrate sufficient understanding. Review the concept and try again.");
         }
     }
 

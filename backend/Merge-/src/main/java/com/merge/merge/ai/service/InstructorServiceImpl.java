@@ -6,7 +6,13 @@ import com.merge.merge.ai.model.InstructorStatus;
 import com.merge.merge.ai.repository.InstructorRepository;
 import com.merge.merge.ai.event.InstructorJobCompletedEvent;
 import com.merge.merge.build.service.ConceptBuildService;
+import com.merge.merge.curriculum.models.Concept;
+import com.merge.merge.curriculum.models.PredefinedContentRef;
+import com.merge.merge.curriculum.service.ConceptService;
 import com.merge.merge.integration.gemini.GeminiClient;
+import com.merge.merge.identity.service.CredentialService;
+import com.merge.merge.identity.MissingCredentialException;
+import com.merge.merge.shared.ResourceNotFoundException;
 import com.merge.merge.shared.queue.RedisTaskQueue;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +35,8 @@ public class InstructorServiceImpl implements InstructorService {
     private final RedisTaskQueue redisTaskQueue;
     private final ConceptBuildService conceptBuildService;
     private final ApplicationEventPublisher eventPublisher;
+    private final CredentialService credentialService;
+    private final ConceptService conceptService;
 
     private static final String QUEUE_NAME = "instructor:job:queue";
 
@@ -40,8 +48,9 @@ public class InstructorServiceImpl implements InstructorService {
     public Instructor chatInteraction(UUID studentId, UUID sessionId, String message) {
         log.info("Processing CHAT_INTERACTION synchronously for student: {}, session: {}", studentId, sessionId);
 
+        String apiKey = getGeminiToken(studentId);
         String prompt = String.format("Respond to the student's message in a chat context. Student: %s, Message: %s", studentId, message);
-        String result = geminiClient.generate(prompt);
+        String result = geminiClient.generate(prompt, apiKey);
 
         Instructor instructor = Instructor.builder()
                 .id(UUID.randomUUID())
@@ -102,6 +111,32 @@ public class InstructorServiceImpl implements InstructorService {
     }
 
     @Override
+    public boolean evaluateDrillAnswer(UUID studentId, UUID conceptId, String question, String expectedAnswer, String studentAnswer) {
+        log.info("Evaluating drill answer for student: {}, concept: {}", studentId, conceptId);
+
+        String prompt = String.format(
+                """
+                You are an expert software engineering tutor grading a student's answer to a drill question.
+
+                Question: %s
+                Model answer: %s
+                Student's answer: %s
+
+                Does the student's answer demonstrate a sufficient understanding of the concept?
+                Minor wording differences are fine. Evaluate based on conceptual correctness, not exact wording.
+
+                Respond with EXACTLY one word: PASS or FAIL
+                """,
+                question, expectedAnswer, studentAnswer
+        );
+
+        String apiKey = getGeminiToken(studentId);
+        String result = geminiClient.generate(prompt, apiKey).trim().toUpperCase();
+        log.info("Drill evaluation result for student {}: {}", studentId, result);
+        return result.contains("PASS");
+    }
+
+    @Override
     public Instructor missionGenerate(UUID studentId, UUID conceptId, Map<String, Object> context) {
         // Not guarded: duplicate generation is harmless
         return enqueueJob(InstructorActionType.MISSION_GENERATE, studentId, conceptId, null, context, null);
@@ -115,8 +150,31 @@ public class InstructorServiceImpl implements InstructorService {
     public Instructor generateDrillSync(UUID studentId, UUID conceptId) {
         log.info("Generating DRILL_GENERATE synchronously for student: {}, concept: {}", studentId, conceptId);
 
-        String prompt = String.format("Generate a drill for student %s focusing on concept %s.", studentId, conceptId);
-        String result = geminiClient.generate(prompt);
+        Concept concept = conceptService.getById(conceptId);
+        PredefinedContentRef content = concept.getPredefinedContentRef();
+
+        String prompt = String.format(
+                """
+                You are an expert software engineering tutor generating a short-answer drill question.
+
+                Concept topic: %s
+                Core content: %s
+                Real-world failure scenario: %s
+
+                Generate ONE short-answer drill question that tests whether the student understands this concept.
+                The question should be concise and answerable in 1-3 sentences.
+
+                You MUST respond using EXACTLY this format and nothing else:
+                QUESTION: <the question text here>
+                ANSWER: <the correct answer here>
+                """,
+                content.getTeachingObjective(),
+                content.getCoreContent(),
+                content.getFailureScenario()
+        );
+
+        String apiKey = getGeminiToken(studentId);
+        String result = geminiClient.generate(prompt, apiKey);
 
         Instructor instructor = Instructor.builder()
                 .id(UUID.randomUUID())
@@ -136,8 +194,26 @@ public class InstructorServiceImpl implements InstructorService {
     public Instructor generateComprehensionSync(UUID studentId, UUID conceptId, UUID drillId) {
         log.info("Generating COMPREHENSION_GENERATE synchronously for student: {}, concept: {}, drill: {}", studentId, conceptId, drillId);
 
-        String prompt = String.format("Generate a comprehension check for student %s on concept %s after passing drill %s.", studentId, conceptId, drillId);
-        String result = geminiClient.generate(prompt);
+        Concept concept = conceptService.getById(conceptId);
+        PredefinedContentRef content = concept.getPredefinedContentRef();
+
+        String prompt = String.format(
+                """
+                You are an expert software engineering tutor providing feedback to a student who just passed a drill.
+
+                Concept topic: %s
+                Core content: %s
+
+                The student answered a drill question on this concept correctly. Write 2-3 sentences of encouraging,
+                insightful feedback that reinforces what they got right and connects it to real-world engineering practice.
+                Be specific to the concept, not generic.
+                """,
+                content.getTeachingObjective(),
+                content.getCoreContent()
+        );
+
+        String apiKey = getGeminiToken(studentId);
+        String result = geminiClient.generate(prompt, apiKey);
 
         Instructor instructor = Instructor.builder()
                 .id(UUID.randomUUID())
@@ -238,8 +314,9 @@ public class InstructorServiceImpl implements InstructorService {
         instructorRepository.save(job);
 
         try {
+            String apiKey = getGeminiToken(job.getStudentId());
             String prompt = buildPrompt(job);
-            String result = geminiClient.generate(prompt);
+            String result = geminiClient.generate(prompt, apiKey);
 
             job.setResult(result);
             job.setStatus(InstructorStatus.COMPLETED);
@@ -293,74 +370,199 @@ public class InstructorServiceImpl implements InstructorService {
     }
 
     private String buildPrompt(Instructor job) {
+        Concept concept = job.getConceptId() != null ? conceptService.getById(job.getConceptId()) : null;
+        PredefinedContentRef content = concept != null ? concept.getPredefinedContentRef() : null;
+        String topic     = content != null ? content.getTeachingObjective() : "unknown concept";
+        String core      = content != null ? content.getCoreContent()       : "";
+        String failure   = content != null ? content.getFailureScenario()   : "";
+
         return switch (job.getActionType()) {
-            case BUILD_PRD_GENERATE ->
-                    String.format("Generate a Product Requirement Document (PRD) for concept: %s. Target student: %s.",
-                            job.getConceptId(), job.getStudentId());
+            case BUILD_PRD_GENERATE -> String.format(
+                    """
+                    You are an expert software engineering tutor creating a project brief for a student.
 
-            case AUDIO_REINFORCE ->
-                    String.format("Generate audio reinforcement content for student: %s struggling with concept: %s (Session: %s). Focus on key conceptual blockers.",
-                            job.getStudentId(), job.getConceptId(), job.getSessionId());
+                    Concept: %s
+                    What the student must learn: %s
+                    Common failure mode to guard against: %s
 
-            case AUDIO_PRIME ->
-                    String.format("Generate audio priming content for student: %s who passed concept: %s (Session: %s). Introduce next-step mental models.",
-                            job.getStudentId(), job.getConceptId(), job.getSessionId());
+                    Generate a concise Product Requirement Document (PRD) for a coding project that directly exercises this concept.
+                    Structure:
+                    - PROJECT OVERVIEW: 2-3 sentences describing the project
+                    - CORE REQUIREMENTS: 3-5 numbered functional requirements
+                    - CONSTRAINTS: what the student must NOT use (e.g. no built-in sort, no framework X)
+                    - ACCEPTANCE CRITERIA: how passing/failing will be judged
+
+                    Keep it scoped for 1-3 days of solo student work. Be specific to the concept, not generic.
+                    """,
+                    topic, core, failure);
+
+            case AUDIO_REINFORCE -> String.format(
+                    """
+                    You are an expert software engineering instructor recording an audio lesson.
+
+                    A student is struggling with this concept:
+                    Concept: %s
+                    Core content: %s
+                    Typical failure mode: %s
+
+                    Write a 2-3 minute spoken script (plain prose, no markdown, no headers) that:
+                    1. Re-explains the concept from a fresh angle — not a repetition of the original
+                    2. Directly addresses the typical failure mode with a concrete counter-example
+                    3. Closes with one actionable thing the student should try in their next attempt
+
+                    Speak directly to the student in second person ("you"). Calm, precise, encouraging tone.
+                    """,
+                    topic, core, failure);
+
+            case AUDIO_PRIME -> String.format(
+                    """
+                    You are an expert software engineering instructor recording a short motivational primer.
+
+                    A student has just demonstrated mastery of this concept:
+                    Concept: %s
+                    Core content: %s
+
+                    Write a 1-2 minute spoken script (plain prose, no markdown, no headers) that:
+                    1. Briefly affirms what they proved they understand
+                    2. Introduces the mental model they will need for the next concept
+                    3. Ends with a single concrete question for them to sit with before the next session
+
+                    Speak directly to the student in second person. Confident, forward-looking tone.
+                    """,
+                    topic, core);
 
             case MISSION_GENERATE -> {
                 Map<String, Object> contextData = job.getContext();
                 String flowType = contextData != null ? (String) contextData.get("flowType") : "FAILURE";
                 if ("RESOLUTION".equals(flowType)) {
                     yield String.format(
-                            "You are an expert AI tutor. A student has successfully passed an attempt on concept %s. " +
-                            "Here is the context data: %s.\n" +
-                            "Compare this passing attempt data with the existing open missions/pain points to determine which of them are resolved by this attempt.\n" +
-                            "You must return the result as a raw JSON object in the following format (no other text, no markdown wrapper):\n" +
-                            "{\n" +
-                            "  \"resolvedMissionIds\": [\"uuid-string\"]\n" +
-                            "}",
-                            job.getConceptId(), contextData != null ? contextData.toString() : "None"
-                    );
+                            """
+                            You are an expert AI tutor tracking a student's learning missions.
+
+                            Concept: %s
+                            Learning goal: %s
+
+                            A student has successfully passed an attempt on this concept.
+                            Attempt context: %s
+
+                            Compare this passing attempt with the existing open missions/pain points in the context.
+                            Determine which open missions are resolved by this passing attempt.
+
+                            Respond with ONLY a raw JSON object — no markdown, no explanation:
+                            {
+                              "resolvedMissionIds": ["uuid-string"]
+                            }
+                            """,
+                            topic, core, contextData != null ? contextData.toString() : "None");
                 } else {
                     yield String.format(
-                            "You are an expert AI tutor. A student has failed an attempt on concept %s. " +
-                            "Here is the context data: %s.\n" +
-                            "Identify the specific conceptual pain points/understanding gaps, decide if they match any existing open missions from the context, " +
-                            "and generate or update the advice for each pain point.\n" +
-                            "You must return the result as a raw JSON array in the following format (no other text, no markdown wrapper):\n" +
-                            "[\n" +
-                            "  {\n" +
-                            "    \"painPointDescription\": \"string\",\n" +
-                            "    \"matchedMissionId\": \"string-or-null\",\n" +
-                            "    \"conceptAndContext\": \"string\"\n" +
-                            "  }\n" +
-                            "]",
-                            job.getConceptId(), contextData != null ? contextData.toString() : "None"
-                    );
+                            """
+                            You are an expert AI tutor tracking a student's learning missions.
+
+                            Concept: %s
+                            Learning goal: %s
+                            Common failure mode: %s
+
+                            A student has failed an attempt on this concept.
+                            Attempt context: %s
+
+                            Identify the specific conceptual gaps this failure reveals. Check if they match any existing open missions in the context, then generate targeted advice for each gap.
+
+                            Respond with ONLY a raw JSON array — no markdown, no explanation:
+                            [
+                              {
+                                "painPointDescription": "string",
+                                "matchedMissionId": "string-or-null",
+                                "conceptAndContext": "string"
+                              }
+                            ]
+                            """,
+                            topic, core, failure, contextData != null ? contextData.toString() : "None");
                 }
             }
 
             case CLEAN_CODE_REVIEW -> {
                 String code = job.getContext() != null ? (String) job.getContext().get("code") : "";
-                yield String.format("Perform a clean code review for student: %s on concept: %s. Code submitted:\n%s",
-                        job.getStudentId(), job.getConceptId(), code);
+                yield String.format(
+                        """
+                        You are a senior software engineer performing a clean code review.
+
+                        The student is working on a concept build for:
+                        Concept: %s
+                        Learning goal: %s
+
+                        Submitted code:
+                        %s
+
+                        Review for:
+                        - Naming: are variable, method, and class names intention-revealing?
+                        - Single responsibility: does each unit do exactly one thing?
+                        - Readability: can a reader understand the logic without comments?
+                        - Duplication: is there any redundant logic that should be extracted?
+
+                        Be specific — reference actual names and patterns from the code above.
+
+                        Format your response EXACTLY as:
+                        SCORE: <number>/100
+                        FEEDBACK: <detailed feedback referencing the actual code>
+                        """,
+                        topic, core, code);
             }
 
             case REFLECT -> {
                 Boolean passed = job.getContext() != null ? (Boolean) job.getContext().get("passed") : null;
                 Boolean isGraduation = job.getContext() != null ? (Boolean) job.getContext().get("isGraduation") : null;
                 yield String.format(
-                        "Generate a personalized reflection prompt for student %s who has completed the concept build for concept %s. " +
-                        "Completion status: %s. Is graduation: %s. Ask the student to reflect on their learning journey, " +
-                        "what coding patterns they discovered, and what mental models they solidified during this concept build.",
-                        job.getStudentId(), job.getConceptId(), Boolean.TRUE.equals(passed) ? "PASSED" : "FAILED", Boolean.TRUE.equals(isGraduation) ? "YES" : "NO"
-                );
+                        """
+                        You are a thoughtful engineering mentor writing a reflection prompt.
+
+                        A student has just completed a concept build on:
+                        Concept: %s
+                        Core content: %s
+
+                        Outcome: %s. Stage graduation build: %s.
+
+                        Write 3-4 open-ended reflection questions (not statements) that:
+                        1. Ask the student to articulate what they now understand in their own words
+                        2. Challenge them to connect this concept to a real system they use daily
+                        3. Ask what they would design differently if they started again
+                        %s
+
+                        Questions only — no preamble, no answers. Each question on its own line, numbered.
+                        """,
+                        topic, core,
+                        Boolean.TRUE.equals(passed) ? "PASSED" : "FAILED",
+                        Boolean.TRUE.equals(isGraduation) ? "YES" : "NO",
+                        Boolean.TRUE.equals(isGraduation)
+                                ? "4. Ask how mastering this concept changed how they think about the full stage they just completed"
+                                : "");
             }
 
-            case SFIA_ALIGNMENT_EVALUATE ->
-                    String.format("Evaluate SFIA competency alignment for student: %s on concept: %s. Verify if the dynamically accumulated SFIA indicators align with Stage requirements.",
-                            job.getStudentId(), job.getConceptId());
+            case SFIA_ALIGNMENT_EVALUATE -> String.format(
+                    """
+                    You are an engineering competency evaluator using the SFIA (Skills Framework for the Information Age).
+
+                    A student has demonstrated mastery of:
+                    Concept: %s
+                    Core content: %s
+                    They avoided this failure mode: %s
+
+                    Identify the top 2-3 SFIA skills this concept directly develops. For each, state the SFIA level (1-7) a student achieving basic mastery of this concept would typically operate at.
+
+                    Format EXACTLY as (one skill per line, no extra text):
+                    SFIA_SKILL: <skill name> | LEVEL: <1-7> | JUSTIFICATION: <one sentence tied to the concept above>
+                    """,
+                    topic, core, failure);
 
             default -> throw new IllegalArgumentException("Unsupported async action type: " + job.getActionType());
         };
+    }
+
+    private String getGeminiToken(UUID studentId) {
+        try {
+            return credentialService.getDecryptedToken(studentId, CredentialService.TokenType.GEMINI);
+        } catch (ResourceNotFoundException e) {
+            throw new MissingCredentialException("Gemini API key is required. Please submit your token first.");
+        }
     }
 }

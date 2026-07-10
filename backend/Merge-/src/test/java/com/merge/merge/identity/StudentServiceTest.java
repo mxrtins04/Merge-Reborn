@@ -101,4 +101,15 @@ class StudentServiceTest {
 
         assertThat(studentService.getById(student.getId()).isInternshipEligible()).isTrue();
     }
+
+    @Test
+    void markConceptCompletedUpdatesLastCompletedConceptId() {
+        Student student = studentService.create("Ada", "details", UUID.randomUUID());
+        UUID conceptId = UUID.randomUUID();
+        assertThat(student.getLastCompletedConceptId()).isNull();
+
+        studentService.markConceptCompleted(student.getId(), conceptId);
+
+        assertThat(studentService.getById(student.getId()).getLastCompletedConceptId()).isEqualTo(conceptId);
+    }
 }

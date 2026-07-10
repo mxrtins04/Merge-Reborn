@@ -55,10 +55,36 @@ class RemediationServiceTest {
     @MockitoBean
     private GeminiClient geminiClient;
 
+    @Autowired
+    private com.merge.merge.identity.repository.CredentialRepository credentialRepository;
+
+    @Autowired
+    private com.merge.merge.identity.service.CredentialService credentialService;
+
+    @Autowired
+    private com.merge.merge.curriculum.repository.ConceptRepository conceptRepository;
+
     @BeforeEach
     void setUp() {
         missionRepository.deleteAll();
         instructorRepository.deleteAll();
+        credentialRepository.deleteAll();
+        conceptRepository.deleteAll();
+    }
+
+    private void setupMockToken(UUID studentId) {
+        credentialService.storeToken(studentId, com.merge.merge.identity.service.CredentialService.TokenType.GEMINI, "mock");
+    }
+
+    private void setupConcept(UUID conceptId) {
+        com.merge.merge.curriculum.models.PredefinedContentRef content =
+                new com.merge.merge.curriculum.models.PredefinedContentRef(
+                        "failureScenario", "teachingObjective", "coreContent"
+                );
+        com.merge.merge.curriculum.models.Concept concept =
+                new com.merge.merge.curriculum.models.Concept(UUID.randomUUID(), content);
+        concept.setId(conceptId);
+        conceptRepository.save(concept);
     }
 
     @Test
@@ -66,6 +92,8 @@ class RemediationServiceTest {
         UUID studentId = UUID.randomUUID();
         UUID conceptId = UUID.randomUUID();
         contextService.createForStudent(studentId);
+        setupMockToken(studentId);
+        setupConcept(conceptId);
 
         // Mock Gemini response for failure flow
         String mockResponse = "[\n" +
@@ -75,7 +103,7 @@ class RemediationServiceTest {
                 "    \"conceptAndContext\": \"Always initialize objects before usage.\"\n" +
                 "  }\n" +
                 "]";
-        when(geminiClient.generate(anyString())).thenReturn(mockResponse);
+        when(geminiClient.generate(anyString(), anyString())).thenReturn(mockResponse);
 
         Map<String, Object> attemptData = new HashMap<>();
         attemptData.put("question", "What is 2+2?");
@@ -111,6 +139,8 @@ class RemediationServiceTest {
         UUID studentId = UUID.randomUUID();
         UUID conceptId = UUID.randomUUID();
         contextService.createForStudent(studentId);
+        setupMockToken(studentId);
+        setupConcept(conceptId);
 
         // Pre-create two open missions
         Mission mission1 = Mission.builder()
@@ -135,7 +165,7 @@ class RemediationServiceTest {
         String mockResponse = "{\n" +
                 "  \"resolvedMissionIds\": [\"" + mission1.getId().toString() + "\"]\n" +
                 "}";
-        when(geminiClient.generate(anyString())).thenReturn(mockResponse);
+        when(geminiClient.generate(anyString(), anyString())).thenReturn(mockResponse);
 
         Map<String, Object> attemptData = new HashMap<>();
         attemptData.put("score", 100);
@@ -166,6 +196,8 @@ class RemediationServiceTest {
         UUID conceptId = UUID.randomUUID();
         UUID drillId = UUID.randomUUID();
         contextService.createForStudent(studentId);
+        setupMockToken(studentId);
+        setupConcept(conceptId);
 
         // Pre-create an open mission
         Mission mission = Mission.builder()
@@ -182,7 +214,7 @@ class RemediationServiceTest {
         String mockResponse = "{\n" +
                 "  \"resolvedMissionIds\": [\"" + mission.getId().toString() + "\"]\n" +
                 "}";
-        when(geminiClient.generate(anyString())).thenReturn(mockResponse);
+        when(geminiClient.generate(anyString(), anyString())).thenReturn(mockResponse);
 
         // Publish DrillPassedEvent
         DrillPassedEvent event = new DrillPassedEvent(this, studentId, conceptId, drillId);
@@ -207,6 +239,8 @@ class RemediationServiceTest {
         UUID studentId = UUID.randomUUID();
         UUID conceptId = UUID.randomUUID();
         contextService.createForStudent(studentId);
+        setupMockToken(studentId);
+        setupConcept(conceptId);
 
         // Mock Gemini response for failure flow
         String mockResponse = "[\n" +
@@ -216,7 +250,7 @@ class RemediationServiceTest {
                 "    \"conceptAndContext\": \"Fix the failing build\"\n" +
                 "  }\n" +
                 "]";
-        when(geminiClient.generate(anyString())).thenReturn(mockResponse);
+        when(geminiClient.generate(anyString(), anyString())).thenReturn(mockResponse);
 
         // Publish BuildCompletedEvent with passed=false
         BuildCompletedEvent event = new BuildCompletedEvent(this, studentId, conceptId, false, false, "key-123");

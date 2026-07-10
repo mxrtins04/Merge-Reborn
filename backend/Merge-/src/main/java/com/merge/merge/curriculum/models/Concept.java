@@ -26,9 +26,18 @@ public class Concept {
 
     private PredefinedContentRef predefinedContentRef;
 
+    private int order;
+
     public Concept(UUID stageId, PredefinedContentRef predefinedContentRef) {
         this.id = UUID.randomUUID();
         this.stageId = stageId;
         this.predefinedContentRef = predefinedContentRef;
+    }
+
+    public Concept(UUID stageId, PredefinedContentRef predefinedContentRef, int order) {
+        this.id = UUID.randomUUID();
+        this.stageId = stageId;
+        this.predefinedContentRef = predefinedContentRef;
+        this.order = order;
     }
 }

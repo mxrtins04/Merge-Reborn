@@ -124,6 +124,13 @@ class DrillControllerTest {
                 .build();
         when(instructorService.generateComprehensionSync(any(UUID.class), any(UUID.class), any(UUID.class)))
                 .thenReturn(mockComprehension);
+
+        when(instructorService.evaluateDrillAnswer(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(invocation -> {
+                    String expected = invocation.getArgument(3);
+                    String actual = invocation.getArgument(4);
+                    return expected.trim().equalsIgnoreCase(actual.trim());
+                });
     }
 
     @AfterEach
@@ -138,6 +145,24 @@ class DrillControllerTest {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
         return headers;
+    }
+
+    @Test
+    void createDrill_missingCredential_returns400() throws Exception {
+        when(instructorService.generateDrillSync(any(UUID.class), any(UUID.class)))
+                .thenThrow(new com.merge.merge.identity.MissingCredentialException("Gemini API key is required. Please submit your token first."));
+
+        mockMvc.perform(post("/api/v1/drills")
+                        .headers(authHeaders())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "conceptId": "%s"
+                                }
+                                """.formatted(conceptId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Missing API key"))
+                .andExpect(jsonPath("$.detail").value("Gemini API key is required. Please submit your token first."));
     }
 
     @Test
@@ -280,7 +305,7 @@ class DrillControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.passed").value(false))
                 .andExpect(jsonPath("$.status").value("FAILED"))
-                .andExpect(jsonPath("$.feedback").value("Answer did not match."))
+                .andExpect(jsonPath("$.feedback").value("Your answer didn't demonstrate sufficient understanding. Review the concept and try again."))
                 .andExpect(jsonPath("$.xpAwarded").value(0))
                 .andExpect(jsonPath("$.tabFocusLost").value(1));
 

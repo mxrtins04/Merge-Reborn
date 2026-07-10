@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -238,5 +239,39 @@ class SessionControllerTest {
                 .path(new ArrayList<>())
                 .build();
         return sessionRepository.save(s);
+    }
+
+    // -------------------------------------------------------------------------
+    // GET /api/v1/sessions/active
+    // -------------------------------------------------------------------------
+
+    @Test
+    void getActiveSession_noToken_returns401() throws Exception {
+        mockMvc.perform(get("/api/v1/sessions/active"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void getActiveSession_noActiveSessionExists_returns404() throws Exception {
+        String token = registerAndLogin("ada@example.com", "correcthorse123", "Ada");
+
+        mockMvc.perform(get("/api/v1/sessions/active")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getActiveSession_activeSessionExists_returns200() throws Exception {
+        String token = registerAndLogin("ada@example.com", "correcthorse123", "Ada");
+        UUID sid = studentId("ada@example.com");
+        Session session = savedOpenSession(sid, Mood.FRESH);
+
+        mockMvc.perform(get("/api/v1/sessions/active")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(session.getId().toString()))
+                .andExpect(jsonPath("$.studentId").value(sid.toString()))
+                .andExpect(jsonPath("$.mood").value("FRESH"))
+                .andExpect(jsonPath("$.endedAt").isEmpty());
     }
 }

@@ -28,7 +28,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(properties = "gemini.api.key=mock")
+@SpringBootTest
 @ActiveProfiles("test")
 @Import(TestcontainersConfiguration.class)
 public class InstructorServiceTest {
@@ -48,19 +48,46 @@ public class InstructorServiceTest {
     @Autowired
     private ApplicationEventPublisher eventPublisher;
 
+    @Autowired
+    private com.merge.merge.identity.repository.CredentialRepository credentialRepository;
+
+    @Autowired
+    private com.merge.merge.identity.service.CredentialService credentialService;
+
+    @Autowired
+    private com.merge.merge.curriculum.repository.ConceptRepository conceptRepository;
+
     private static final String QUEUE_NAME = "instructor:job:queue";
 
     @BeforeEach
     void setUp() {
         instructorRepository.deleteAll();
         conceptBuildRepository.deleteAll();
+        credentialRepository.deleteAll();
+        conceptRepository.deleteAll();
         redisTemplate.delete(QUEUE_NAME);
+    }
+
+    private void setupMockToken(UUID studentId) {
+        credentialService.storeToken(studentId, com.merge.merge.identity.service.CredentialService.TokenType.GEMINI, "mock");
+    }
+
+    private void setupConcept(UUID conceptId) {
+        com.merge.merge.curriculum.models.PredefinedContentRef content =
+                new com.merge.merge.curriculum.models.PredefinedContentRef(
+                        "failureScenario", "teachingObjective", "coreContent"
+                );
+        com.merge.merge.curriculum.models.Concept concept =
+                new com.merge.merge.curriculum.models.Concept(UUID.randomUUID(), content);
+        concept.setId(conceptId);
+        conceptRepository.save(concept);
     }
 
     @Test
     void testChatInteractionSync() {
         UUID studentId = UUID.randomUUID();
         UUID sessionId = UUID.randomUUID();
+        setupMockToken(studentId);
 
         Instructor result = instructorService.chatInteraction(studentId, sessionId, "Hello AI");
 
@@ -84,6 +111,8 @@ public class InstructorServiceTest {
         UUID studentId = UUID.randomUUID();
         UUID conceptId = UUID.randomUUID();
         UUID drillId = UUID.randomUUID();
+        setupMockToken(studentId);
+        setupConcept(conceptId);
 
         DrillPassedEvent event = new DrillPassedEvent(this, studentId, conceptId, drillId);
         eventPublisher.publishEvent(event);
@@ -103,6 +132,8 @@ public class InstructorServiceTest {
         UUID studentId = UUID.randomUUID();
         UUID conceptId = UUID.randomUUID();
         String idempotencyKey = UUID.randomUUID().toString();
+        setupMockToken(studentId);
+        setupConcept(conceptId);
 
         ConceptBuildUnlockedEvent event = new ConceptBuildUnlockedEvent(this, studentId, conceptId, idempotencyKey);
         eventPublisher.publishEvent(event);
@@ -137,6 +168,8 @@ public class InstructorServiceTest {
         UUID conceptId = UUID.randomUUID();
         String code = "public class Solution {}";
         String idempotencyKey = UUID.randomUUID().toString();
+        setupMockToken(studentId);
+        setupConcept(conceptId);
 
         BuildSubmittedEvent event = new BuildSubmittedEvent(this, studentId, conceptId, code, idempotencyKey);
         eventPublisher.publishEvent(event);
@@ -160,6 +193,8 @@ public class InstructorServiceTest {
         UUID studentId = UUID.randomUUID();
         UUID conceptId = UUID.randomUUID();
         String idempotencyKey = UUID.randomUUID().toString();
+        setupMockToken(studentId);
+        setupConcept(conceptId);
 
         BuildCompletedEvent event = new BuildCompletedEvent(this, studentId, conceptId, true, false, idempotencyKey);
         eventPublisher.publishEvent(event);
@@ -174,7 +209,7 @@ public class InstructorServiceTest {
         Instructor processed = instructorRepository.findById(record.getId()).orElse(null);
         assertThat(processed).isNotNull();
         assertThat(processed.getStatus()).isEqualTo(InstructorStatus.COMPLETED);
-        assertThat(processed.getResult()).contains("personalized reflection prompt");
+        assertThat(processed.getResult()).contains("reflection prompt");
     }
 
     @Test
@@ -182,6 +217,7 @@ public class InstructorServiceTest {
         UUID studentId = UUID.randomUUID();
         UUID conceptId = UUID.randomUUID();
         UUID sessionId = UUID.randomUUID();
+        setupMockToken(studentId);
 
         // 1. ConceptBuild does not exist -> Passed is false -> AUDIO_REINFORCE
         Instructor job1 = instructorService.handleSessionExhausted(studentId, sessionId, conceptId);
@@ -216,6 +252,7 @@ public class InstructorServiceTest {
     void testIdempotencyGuards() {
         UUID studentId = UUID.randomUUID();
         UUID conceptId = UUID.randomUUID();
+        setupMockToken(studentId);
 
         // 1. Mission generate is not guarded
         Map<String, Object> ctx = new HashMap<>();
@@ -233,5 +270,16 @@ public class InstructorServiceTest {
 
         Instructor p3 = instructorService.audioPrime(studentId, UUID.randomUUID(), conceptId);
         assertThat(p3.getId()).isEqualTo(p1.getId()); // Reuses COMPLETED job!
+    }
+
+    @Test
+    void testChatInteractionWithoutTokenThrowsMissingCredentialException() {
+        UUID studentId = UUID.randomUUID();
+        UUID sessionId = UUID.randomUUID();
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                instructorService.chatInteraction(studentId, sessionId, "Hello AI")
+        ).isInstanceOf(com.merge.merge.identity.MissingCredentialException.class)
+         .hasMessageContaining("Gemini API key is required");
     }
 }

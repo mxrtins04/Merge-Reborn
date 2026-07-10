@@ -1,6 +1,7 @@
 package com.merge.merge.shared;
 
 import com.merge.merge.identity.DuplicateEmailException;
+import com.merge.merge.identity.MissingCredentialException;
 import com.merge.merge.shared.security.InvalidRefreshTokenException;
 import com.merge.merge.shared.security.InvalidResetTokenException;
 import com.merge.merge.shared.security.RateLimitExceededException;
@@ -95,6 +96,22 @@ public class GlobalExceptionHandler {
         problem.setTitle("Email already registered");
         problem.setDetail(e.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    ResponseEntity<ProblemDetail> handleIllegalState(IllegalStateException e) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setTitle("Invalid state or duplicate submission");
+        problem.setDetail(e.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
+    }
+
+    @ExceptionHandler(MissingCredentialException.class)
+    ResponseEntity<ProblemDetail> handleMissingCredential(MissingCredentialException e) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setTitle("Missing API key");
+        problem.setDetail(e.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
     }
 
     // -----------------------------------------------------------------------

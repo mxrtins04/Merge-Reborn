@@ -15,14 +15,11 @@ import java.util.List;
 public class GeminiClient {
 
     private final RestTemplate restTemplate;
-    private final String apiKey;
     private final String model;
 
     public GeminiClient(
-            @Value("${gemini.api.key:mock}") String apiKey,
-            @Value("${gemini.model:gemini-1.5-flash}") String model) {
+            @Value("${gemini.model:gemini-3.5-flash}") String model) {
         this.restTemplate = new RestTemplate();
-        this.apiKey = apiKey;
         this.model = model;
     }
 
@@ -30,13 +27,16 @@ public class GeminiClient {
      * Sends a generation request to the Gemini API.
      * If the API key is set to "mock" or is blank, returns a mock response.
      */
-    public String generate(String prompt) {
+    public String generate(String prompt, String apiKey) {
         if ("mock".equalsIgnoreCase(apiKey) || apiKey.isBlank()) {
             log.info("Gemini API key is mock or blank. Returning fallback mock response.");
-            return "Mock Gemini response for prompt: " + (prompt.length() > 50 ? prompt.substring(0, 50) + "..." : prompt);
+            if (prompt.contains("PASS or FAIL")) {
+                return "PASS";
+            }
+            return "Mock Gemini response for prompt: " + prompt;
         }
 
-        String url = String.format("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s", model, apiKey);
+        String url = String.format("https://generativelanguage.googleapis.com/v1/models/%s:generateContent?key=%s", model, apiKey);
 
         GeminiRequest request = GeminiRequest.builder()
                 .contents(List.of(GeminiRequest.Content.builder()

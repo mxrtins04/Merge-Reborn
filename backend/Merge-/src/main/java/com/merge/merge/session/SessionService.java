@@ -46,6 +46,11 @@ public class SessionService {
         }
     }
 
+    public Session getActiveSession(UUID studentId) {
+        return sessionRepository.findByStudentIdAndEndedAtIsNull(studentId)
+                .orElseThrow(() -> new com.merge.merge.shared.ResourceNotFoundException("No active session found for student " + studentId));
+    }
+
     // -------------------------------------------------------------------------
     // Session end
     // -------------------------------------------------------------------------

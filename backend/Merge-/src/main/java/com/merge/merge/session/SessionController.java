@@ -32,6 +32,21 @@ class SessionController {
 
     private final SessionService sessionService;
 
+    @GetMapping("/active")
+    ResponseEntity<Session> getActiveSession(Authentication authentication) {
+        UUID studentId = (UUID) authentication.getPrincipal();
+        Session active = sessionService.getActiveSession(studentId);
+        return ResponseEntity.ok(active);
+    }
+
+    @PostMapping
+    ResponseEntity<Session> startSession(@RequestBody StartSessionRequest request,
+                                         Authentication authentication) {
+        UUID studentId = (UUID) authentication.getPrincipal();
+        Session session = sessionService.getOrCreateOpenSession(studentId, request.mood());
+        return ResponseEntity.status(HttpStatus.CREATED).body(session);
+    }
+
     /**
      * Ends an open session.
      *

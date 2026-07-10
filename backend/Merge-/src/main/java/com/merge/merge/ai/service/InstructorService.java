@@ -53,6 +53,13 @@ public interface InstructorService {
     Instructor generateDrillSync(UUID studentId, UUID conceptId);
 
     /**
+     * Uses Gemini to semantically evaluate whether a student's answer to a drill is correct.
+     * Returns true if the answer demonstrates sufficient understanding, false otherwise.
+     * Synchronous (calls Gemini in-thread).
+     */
+    boolean evaluateDrillAnswer(UUID studentId, UUID conceptId, String question, String expectedAnswer, String studentAnswer);
+
+    /**
      * Reacts to a drill passing.
      * Synchronous (calls Gemini in-thread).
      */

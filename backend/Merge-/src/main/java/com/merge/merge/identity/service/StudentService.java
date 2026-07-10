@@ -61,6 +61,19 @@ public class StudentService {
         return updated;
     }
 
+    public Student markConceptCompleted(UUID studentId, UUID conceptId) {
+        Query query = Query.query(Criteria.where("_id").is(studentId));
+        Update update = new Update().set("lastCompletedConceptId", conceptId);
+        Student updated = mongoTemplate.findAndModify(
+                query, update,
+                FindAndModifyOptions.options().returnNew(true),
+                Student.class);
+        if (updated == null) {
+            throw ResourceNotFoundException.forId("Student", studentId);
+        }
+        return updated;
+    }
+
     public Student advanceToStage(UUID studentId, UUID stageId) {
         Student student = getById(studentId);
         student.advanceToStage(stageId);

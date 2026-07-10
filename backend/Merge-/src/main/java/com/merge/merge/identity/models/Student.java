@@ -56,6 +56,8 @@ public class Student {
 
     private boolean internshipEligible;
 
+    private UUID lastCompletedConceptId;
+
     public Student(UUID id, String email, String passwordHash, String name, String details, UUID stageId) {
         this.id = id;
         this.email = email;
@@ -82,5 +84,9 @@ public class Student {
 
     public void grantInternshipEligibility() {
         this.internshipEligible = true;
+    }
+
+    public void markConceptCompleted(UUID conceptId) {
+        this.lastCompletedConceptId = conceptId;
     }
 }

@@ -144,4 +144,57 @@ class StudentControllerTest {
 
         assertThat(result.getResponse().getContentAsString()).doesNotContain("passwordHash");
     }
+
+    // -------------------------------------------------------------------
+    // POST /api/v1/students/me/onboarding
+    // -------------------------------------------------------------------
+
+    @Test
+    void onboard_validPayload_returns200_andSavesToContext() throws Exception {
+        String token = registerAndLogin("ada@example.com", "correcthorse123", "Ada");
+
+        mockMvc.perform(post("/api/v1/students/me/onboarding")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "yearsOfExperience": 3,
+                                  "preferredLanguage": "JAVA",
+                                  "motivation": "JOB"
+                                }
+                                """.strip()))
+                .andExpect(status().isOk());
+
+        // A second submission should be rejected (400 Bad Request)
+        mockMvc.perform(post("/api/v1/students/me/onboarding")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "yearsOfExperience": 5,
+                                  "preferredLanguage": "PYTHON",
+                                  "motivation": "CURIOSITY"
+                                }
+                                """.strip()))
+                .andExpect(status().isBadRequest());
+    }
+
+    // -------------------------------------------------------------------
+    // POST /api/v1/students/me/credentials
+    // -------------------------------------------------------------------
+
+    @Test
+    void submitCredentials_validPayload_returns200() throws Exception {
+        String token = registerAndLogin("ada@example.com", "correcthorse123", "Ada");
+
+        mockMvc.perform(post("/api/v1/students/me/credentials")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "token": "secret-gemini-api-key"
+                                }
+                                """.strip()))
+                .andExpect(status().isOk());
+    }
 }

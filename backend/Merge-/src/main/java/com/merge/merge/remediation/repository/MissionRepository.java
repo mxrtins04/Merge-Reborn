@@ -7,4 +7,5 @@ import java.util.UUID;
 
 public interface MissionRepository extends MongoRepository<Mission, UUID> {
     List<Mission> findByStudentIdAndConceptIdAndPassed(UUID studentId, UUID conceptId, boolean passed);
+    List<Mission> findByStudentIdAndPassed(UUID studentId, boolean passed);
 }

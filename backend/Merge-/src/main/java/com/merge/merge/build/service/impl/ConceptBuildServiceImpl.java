@@ -78,6 +78,7 @@ public class ConceptBuildServiceImpl implements ConceptBuildService {
         );
         if (updated != null) {
             studentService.awardXp(updated.getStudentId(), amount);
+            studentService.markConceptCompleted(updated.getStudentId(), updated.getConceptId());
             return true;
         }
         return false;

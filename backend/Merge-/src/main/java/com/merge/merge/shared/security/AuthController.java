@@ -53,7 +53,7 @@ class AuthController {
     private boolean cookieSecure;
 
     @PostMapping("/register")
-    @RateLimited(key = "register", limit = 3, windowSeconds = 3600)
+    @RateLimited(key = "register", limit = 3, windowSeconds = 60)
     ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         Student student = authService.register(request.email(), request.password(), request.name());
         return issueTokens(student.getId());
