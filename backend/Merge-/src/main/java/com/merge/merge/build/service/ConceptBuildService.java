@@ -30,4 +30,9 @@ public interface ConceptBuildService {
      * @return true if XP was successfully awarded, false if it was already awarded.
      */
     boolean awardXpOnce(UUID conceptBuildId, int amount);
+
+    /**
+     * Saves a ConceptBuild document.
+     */
+    ConceptBuild save(ConceptBuild cb);
 }

@@ -90,6 +90,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
     }
 
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    ResponseEntity<ProblemDetail> handleNoResourceFound(org.springframework.web.servlet.resource.NoResourceFoundException e) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+        problem.setTitle("Resource not found");
+        problem.setDetail(e.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
+    }
+
     @ExceptionHandler(DuplicateEmailException.class)
     ResponseEntity<ProblemDetail> handleDuplicateEmail(DuplicateEmailException e) {
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);

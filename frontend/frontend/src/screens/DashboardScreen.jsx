@@ -442,7 +442,7 @@ export default function DashboardScreen() {
                       ? (activeMission.painPointDescription || 'Concept Remediation') 
                       : stageComplete 
                         ? 'Capstone Stage Graduation Build' 
-                        : (nextConcept.concept?.predefinedContentRef?.teachingObjective || 'Next Formation Stage')}
+                        : (nextConcept.concept?.name || nextConcept.concept?.predefinedContentRef?.teachingObjective || 'Next Formation Stage')}
                   </h2>
                 </div>
                 <span className="px-2.5 py-0.5 border border-primary/40 text-primary font-mono-code text-[9px] uppercase tracking-wider rounded">

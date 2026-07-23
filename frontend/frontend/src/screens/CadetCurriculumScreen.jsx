@@ -108,8 +108,9 @@ export default function CadetCurriculumScreen() {
           <div className="space-y-4">
             {concepts.map((concept, idx) => {
               const ref = concept.predefinedContentRef;
-              const title = ref?.teachingObjective || ref?.failureScenario || `Concept ${idx + 1}`;
-              const description = ref?.coreContent || ref?.failureScenario || '';
+              const badgeNum = concept.order ?? (idx + 1);
+              const title = concept.name || `Concept ${badgeNum}`;
+              const description = ref?.teachingObjective || ref?.coreContent || '';
 
               return (
                 <div key={concept.id} className="border border-outline-variant bg-[#16181D] p-6 space-y-3 transition-colors duration-150 hover:border-[#424754]">
@@ -117,7 +118,7 @@ export default function CadetCurriculumScreen() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="font-mono-code text-[10px] text-on-surface-variant uppercase">
-                          #{idx + 1}
+                          #{badgeNum}
                         </span>
                         <span className="font-label-caps text-label-caps text-on-surface font-bold uppercase">
                           {title}

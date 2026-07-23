@@ -5,6 +5,7 @@ import com.merge.merge.build.event.BuildCompletedEvent;
 import com.merge.merge.build.models.BuildStatus;
 import com.merge.merge.build.models.ConceptBuild;
 import com.merge.merge.build.models.LevelBuild;
+import com.merge.merge.build.models.ComprehensionCheck;
 import com.merge.merge.build.repository.ConceptBuildRepository;
 import com.merge.merge.build.repository.LevelBuildRepository;
 import com.merge.merge.build.service.ConceptBuildService;
@@ -43,6 +44,7 @@ public class BuildQueueWorker {
     private final ApplicationEventPublisher eventPublisher;
     private final TaskExecutor taskExecutor;
     private final Judge0Client judge0Client;
+    private final com.merge.merge.build.repository.ComprehensionCheckRepository comprehensionCheckRepository;
 
     private static final String QUEUE_NAME = "build:job:queue";
     private static final int CONCEPT_BUILD_XP = 20;
@@ -59,7 +61,8 @@ public class BuildQueueWorker {
             InstructorService instructorService,
             ApplicationEventPublisher eventPublisher,
             @Qualifier("applicationTaskExecutor") TaskExecutor taskExecutor,
-            Judge0Client judge0Client
+            Judge0Client judge0Client,
+            com.merge.merge.build.repository.ComprehensionCheckRepository comprehensionCheckRepository
     ) {
         this.redisTaskQueue = redisTaskQueue;
         this.conceptBuildRepository = conceptBuildRepository;
@@ -72,6 +75,7 @@ public class BuildQueueWorker {
         this.eventPublisher = eventPublisher;
         this.taskExecutor = taskExecutor;
         this.judge0Client = judge0Client;
+        this.comprehensionCheckRepository = comprehensionCheckRepository;
     }
 
     @Scheduled(fixedDelay = 1000)
@@ -121,24 +125,44 @@ public class BuildQueueWorker {
         log.info("Running Judge0 execution for ConceptBuild {}", cb.getId());
         Judge0Result result = judge0Client.evaluate(cb.getSourceCode(), cb.getTestSuite());
 
-        cb.setHiddenTestsPassed(result.passed());
-        cb.setTddSuitePassed(result.passed());
-        cb.setComprehensionCheckPassed(true);
-        cb.setPassed(result.passed());
-        cb.setStatus(result.passed() ? BuildStatus.PASSED : BuildStatus.FAILED);
-        cb.setFeedback(result.passed() ? "Tests executed successfully. " + result.stdout()
-                : "Execution failed. Stdout: " + result.stdout() + ", Stderr: " + result.stderr() + ", Compile: " + result.compileOutput());
+        if (result.passed()) {
+            cb.setHiddenTestsPassed(true);
+            cb.setTddSuitePassed(true);
+            cb.setComprehensionCheckPassed(false);
+
+            com.merge.merge.ai.model.Instructor instructor = instructorService.generateBuildComprehensionSync(
+                    cb.getStudentId(), cb.getConceptId(), cb.getSourceCode()
+            );
+
+            String questionsAndAnswers = instructor.getResult();
+            String questions = parseQuestionsPart(questionsAndAnswers);
+            String expectedAnswers = parseExpectedAnswersPart(questionsAndAnswers);
+
+            ComprehensionCheck check = ComprehensionCheck.builder()
+                    .id(UUID.randomUUID())
+                    .studentId(cb.getStudentId())
+                    .buildId(cb.getId())
+                    .isLevelBuild(false)
+                    .questions(questions)
+                    .expectedAnswers(expectedAnswers)
+                    .passed(false)
+                    .serverDeadline(Instant.now().plusSeconds(10))
+                    .createdAt(Instant.now())
+                    .build();
+            comprehensionCheckRepository.save(check);
+
+            cb.setFeedback("Tests passed! Please complete your comprehension check to pass the build. Comprehension Check ID: " + check.getId());
+            cb.setStatus(BuildStatus.RUNNING);
+        } else {
+            cb.setHiddenTestsPassed(false);
+            cb.setTddSuitePassed(false);
+            cb.setComprehensionCheckPassed(false);
+            cb.setPassed(false);
+            cb.setStatus(BuildStatus.FAILED);
+            cb.setFeedback("Execution failed. Stdout: " + result.stdout() + ", Stderr: " + result.stderr() + ", Compile: " + result.compileOutput());
+        }
 
         conceptBuildRepository.save(cb);
-
-        // Award XP atomically (single-payout guard)
-        conceptBuildService.awardXpOnce(cb.getId(), CONCEPT_BUILD_XP);
-
-        // Publish event to trigger downstream Instructor reflection asynchronously
-        eventPublisher.publishEvent(new BuildCompletedEvent(
-                this, cb.getStudentId(), cb.getConceptId(), true, false, cb.getIdempotencyKey()
-        ));
-
         log.info("Completed processing for ConceptBuild {}", cb.getId());
     }
 
@@ -154,62 +178,73 @@ public class BuildQueueWorker {
         log.info("Running Judge0 execution for LevelBuild {}", lb.getId());
         Judge0Result result = judge0Client.evaluate(lb.getSourceCode(), lb.getTestSuite());
 
-        lb.setHiddenTestsPassed(result.passed());
-        lb.setTddSuitePassed(result.passed());
-        lb.setComprehensionCheckPassed(true);
+        if (result.passed()) {
+            lb.setHiddenTestsPassed(true);
+            lb.setTddSuitePassed(true);
+            lb.setComprehensionCheckPassed(false);
+            levelBuildRepository.save(lb);
 
-        // 2. Call async reviews for pedagogical / dynamic EProfile competency evidence
-        instructorService.generateCleanCodeReviewAsync(
-                lb.getStudentId(), lb.getStageId(), lb.getGithubLink(), lb.getIdempotencyKey() + "-cc"
-        );
-        instructorService.evaluateSfiaAlignmentAsync(
-                lb.getStudentId(), lb.getStageId(), lb.getIdempotencyKey() + "-sfia"
-        );
+            instructorService.generateCleanCodeReviewAsync(
+                    lb.getStudentId(), lb.getStageId(), lb.getGithubLink(), lb.getIdempotencyKey() + "-cc"
+            );
+            instructorService.evaluateSfiaAlignmentAsync(
+                    lb.getStudentId(), lb.getStageId(), lb.getIdempotencyKey() + "-sfia"
+            );
 
-        // Mock clean code review rubric score and SFIA alignment
-        lb.setCleanCodeScore(85);
-        lb.setSfiaAligned(true);
+            com.merge.merge.ai.model.Instructor instructor = instructorService.generateBuildComprehensionSync(
+                    lb.getStudentId(), lb.getStageId(), lb.getSourceCode()
+            );
 
-        // 3. Evaluate pass/fail based on Stage category (Cadet vs. Engineer & Above)
-        Stage stage = stageService.getById(lb.getStageId());
-        boolean isCadet = stage.getName().toLowerCase().contains("cadet");
+            String questionsAndAnswers = instructor.getResult();
+            String questions = parseQuestionsPart(questionsAndAnswers);
+            String expectedAnswers = parseExpectedAnswersPart(questionsAndAnswers);
 
-        boolean passed;
-        if (isCadet) {
-            passed = lb.isHiddenTestsPassed() && lb.isTddSuitePassed() && lb.isComprehensionCheckPassed();
-            log.info("Stage is Cadet. Skipping clean code and SFIA gating check for LevelBuild {}.", lb.getId());
+            ComprehensionCheck check = ComprehensionCheck.builder()
+                    .id(UUID.randomUUID())
+                    .studentId(lb.getStudentId())
+                    .buildId(lb.getId())
+                    .isLevelBuild(true)
+                    .questions(questions)
+                    .expectedAnswers(expectedAnswers)
+                    .passed(false)
+                    .serverDeadline(Instant.now().plusSeconds(10))
+                    .createdAt(Instant.now())
+                    .build();
+            comprehensionCheckRepository.save(check);
+
+            LevelBuild latest = levelBuildRepository.findById(lb.getId()).orElse(lb);
+            latest.setFeedback("Tests passed! Please complete your comprehension check to pass the build. Comprehension Check ID: " + check.getId());
+            latest.setStatus(BuildStatus.RUNNING);
+            levelBuildRepository.save(latest);
         } else {
-            passed = lb.isHiddenTestsPassed() && lb.isTddSuitePassed() && lb.isComprehensionCheckPassed()
-                    && (lb.getCleanCodeScore() >= 70) && lb.isSfiaAligned();
-            log.info("Stage is Engineer or above. Applying full 5-gate conjunction for LevelBuild {}.", lb.getId());
-        }
-
-        lb.setPassed(passed);
-        lb.setStatus(passed ? BuildStatus.PASSED : BuildStatus.FAILED);
-        lb.setFeedback(passed ? "Capstone build completed and passed all gate checks."
-                : "Capstone build failed one or more gating criteria.");
-
-        levelBuildRepository.save(lb);
-
-        if (passed) {
-            // Award Level XP atomically
-            levelBuildService.awardLevelXpOnce(lb.getId(), LEVEL_BUILD_XP);
-
-            // Attempt promotion
-            boolean promoted = progressionService.promoteIfEligible(lb.getStudentId(), lb.getStageId());
-
-            // Check if this was graduation (final stage completed)
-            List<Stage> allStages = stageService.listAll().stream()
-                    .sorted(Comparator.comparingInt(Stage::getXpThreshold))
-                    .collect(Collectors.toList());
-            boolean isGraduation = allStages.isEmpty() || allStages.get(allStages.size() - 1).getId().equals(lb.getStageId());
-
-            // Publish completed event to trigger AI reflection
-            eventPublisher.publishEvent(new BuildCompletedEvent(
-                    this, lb.getStudentId(), lb.getStageId(), true, isGraduation, lb.getIdempotencyKey()
-            ));
+            lb.setHiddenTestsPassed(false);
+            lb.setTddSuitePassed(false);
+            lb.setComprehensionCheckPassed(false);
+            lb.setPassed(false);
+            lb.setStatus(BuildStatus.FAILED);
+            lb.setFeedback("Capstone build failed on unit tests. Stdout: " + result.stdout() + ", Stderr: " + result.stderr());
+            levelBuildRepository.save(lb);
         }
 
         log.info("Completed processing for LevelBuild {} with status {}", lb.getId(), lb.getStatus());
+    }
+
+    private String parseQuestionsPart(String text) {
+        if (text == null) return "";
+        int qStart = text.indexOf("QUESTIONS:");
+        int aStart = text.indexOf("EXPECTED_ANSWERS:");
+        if (qStart != -1 && aStart != -1 && qStart < aStart) {
+            return text.substring(qStart + "QUESTIONS:".length(), aStart).trim();
+        }
+        return text;
+    }
+
+    private String parseExpectedAnswersPart(String text) {
+        if (text == null) return "";
+        int aStart = text.indexOf("EXPECTED_ANSWERS:");
+        if (aStart != -1) {
+            return text.substring(aStart + "EXPECTED_ANSWERS:".length()).trim();
+        }
+        return "";
     }
 }

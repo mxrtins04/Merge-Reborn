@@ -78,9 +78,7 @@ public class ProgressionServiceImpl implements ProgressionService {
             return true;
         } else {
             // No next stage found; student has graduated the curriculum (final stage capstone completed).
-            // We grant internship eligibility as final project completion eligibility is gated.
-            log.info("Student {} has graduated the final stage {}! Granting internship eligibility.", studentId, stageId);
-            studentService.grantInternshipEligibility(studentId);
+            log.info("Student {} has graduated the final stage {}!", studentId, stageId);
             return true;
         }
     }

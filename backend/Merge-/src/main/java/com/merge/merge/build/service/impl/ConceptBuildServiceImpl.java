@@ -83,4 +83,9 @@ public class ConceptBuildServiceImpl implements ConceptBuildService {
         }
         return false;
     }
+
+    @Override
+    public ConceptBuild save(ConceptBuild cb) {
+        return conceptBuildRepository.save(cb);
+    }
 }

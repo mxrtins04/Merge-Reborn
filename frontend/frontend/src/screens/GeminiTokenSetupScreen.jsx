@@ -12,8 +12,8 @@ export default function GeminiTokenSetupScreen() {
 
   const handleSubmitToken = async (e) => {
     e.preventDefault();
-    if (!token.startsWith('AIzaSy')) {
-      setErrorMsg('Invalid token format. Gemini API keys begin with "AIzaSy".');
+    if (!token.startsWith('AIza') && !token.startsWith('AQ.')) {
+      setErrorMsg('Invalid token format. Gemini API keys begin with "AIza" or "AQ.".');
       return;
     }
     setErrorMsg('');
@@ -102,7 +102,7 @@ export default function GeminiTokenSetupScreen() {
                 type="password"
                 required
                 disabled={verifying}
-                placeholder="AIzaSy…"
+                placeholder="AIzaSy… or AQ.…"
                 value={token}
                 onChange={e => { setToken(e.target.value); if (errorMsg) setErrorMsg(''); }}
                 className={`w-full bg-[#0b0e15] font-mono-code text-[13px] text-[#e1e2ec] px-4 py-3 rounded-none outline-none border transition-colors duration-150 disabled:opacity-50 placeholder-[#424754] ${

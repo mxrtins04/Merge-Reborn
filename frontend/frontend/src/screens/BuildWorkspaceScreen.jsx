@@ -384,7 +384,7 @@ List the edge cases you considered and how you handled them.`
             <h2 className="font-headline-lg text-headline-lg text-on-surface uppercase">
               {buildType === 'level'
                 ? `${stageData?.name || 'Stage'} Capstone`
-                : buildConcept?.predefinedContentRef?.teachingObjective || 'Concept Build'}
+                : buildConcept?.name || buildConcept?.predefinedContentRef?.teachingObjective || 'Concept Build'}
             </h2>
           </div>
 

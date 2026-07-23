@@ -9,5 +9,6 @@ public enum BuildStatus {
     PASSED,
     FAILED,
     MISSION_GENERATING,
-    MISSION_READY
+    MISSION_READY,
+    FAILED_NEEDS_REVIEW
 }

@@ -11,12 +11,16 @@ import java.util.UUID;
 public record ConceptResponse(
         UUID id,
         UUID stageId,
+        String name,
+        int order,
         PredefinedContentRefResponse predefinedContentRef
 ) {
     public static ConceptResponse from(Concept concept) {
         return new ConceptResponse(
                 concept.getId(),
                 concept.getStageId(),
+                concept.getName(),
+                concept.getOrder(),
                 PredefinedContentRefResponse.from(concept.getPredefinedContentRef())
         );
     }

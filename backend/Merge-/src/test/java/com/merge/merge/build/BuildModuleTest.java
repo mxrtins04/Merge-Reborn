@@ -24,6 +24,7 @@ import com.merge.merge.curriculum.service.StageService;
 import com.merge.merge.identity.models.Student;
 import com.merge.merge.identity.repository.StudentRepository;
 import com.merge.merge.identity.service.StudentService;
+import com.merge.merge.build.models.ComprehensionCheck;
 import com.merge.merge.shared.queue.RedisTaskQueue;
 import com.merge.merge.shared.web.SubmissionController;
 import org.junit.jupiter.api.AfterEach;
@@ -92,6 +93,24 @@ class BuildModuleTest {
     @Autowired
     private RedisTaskQueue redisTaskQueue;
 
+    @Autowired
+    private com.merge.merge.identity.service.CredentialService credentialService;
+
+    @Autowired
+    private com.merge.merge.build.repository.ComprehensionCheckRepository comprehensionCheckRepository;
+
+    @Autowired
+    private com.merge.merge.build.web.ComprehensionCheckController comprehensionCheckController;
+
+    @Autowired
+    private com.merge.merge.ai.service.InstructorService instructorService;
+
+    @Autowired
+    private com.merge.merge.project.service.ProjectService projectService;
+
+    @Autowired
+    private com.merge.merge.project.repository.ProjectRepository projectRepository;
+
     private Stage cadetStage;
     private Stage engineerStage;
     private Concept cadetConcept;
@@ -110,6 +129,7 @@ class BuildModuleTest {
         engineerConcept = conceptService.create(engineerStage.getId(), ref);
 
         student = studentService.create("Adewole", "details", cadetStage.getId());
+        credentialService.storeToken(student.getId(), com.merge.merge.identity.service.CredentialService.TokenType.GEMINI, "mock");
     }
 
     @AfterEach
@@ -124,6 +144,15 @@ class BuildModuleTest {
         conceptBuildRepository.deleteAll();
         levelBuildRepository.deleteAll();
         instructorRepository.deleteAll();
+        comprehensionCheckRepository.deleteAll();
+        projectRepository.deleteAll();
+        // Delete all credentials
+        com.merge.merge.identity.repository.CredentialRepository credentialRepository = 
+                org.springframework.test.util.ReflectionTestUtils.getField(credentialService, "credentialRepository") != null ?
+                (com.merge.merge.identity.repository.CredentialRepository) org.springframework.test.util.ReflectionTestUtils.getField(credentialService, "credentialRepository") : null;
+        if (credentialRepository != null) {
+            credentialRepository.deleteAll();
+        }
         // Clear redis queue
         String taskId;
         while ((taskId = redisTaskQueue.dequeue("build:job:queue")) != null) {
@@ -133,6 +162,23 @@ class BuildModuleTest {
 
     private static final String STUB_SOURCE = "public class Solution {}";
     private static final String STUB_TESTS = "public class SolutionTest { public static void main(String[] args) {} }";
+
+    private void submitMockCheck(UUID buildId) {
+        ComprehensionCheck check = comprehensionCheckRepository.findByBuildId(buildId)
+                .orElseThrow(() -> new AssertionError("ComprehensionCheck not found for build " + buildId));
+        org.springframework.security.authentication.UsernamePasswordAuthenticationToken auth =
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(student.getId(), null, java.util.List.of());
+        comprehensionCheckController.submitCheck(check.getId(), new com.merge.merge.build.web.ComprehensionCheckController.SubmitCheckRequest("answers"), auth);
+    }
+
+    private void processQueuedInstructorJobs() {
+        java.util.List<Instructor> queuedJobs = instructorRepository.findAll().stream()
+                .filter(j -> j.getStatus() == InstructorStatus.QUEUED)
+                .collect(java.util.stream.Collectors.toList());
+        for (Instructor job : queuedJobs) {
+            instructorService.processJob(job.getId());
+        }
+    }
 
     @Test
     void testConceptBuildLifecycleAndXpIdempotency() {
@@ -147,7 +193,14 @@ class BuildModuleTest {
         // 2. Background worker processing
         buildQueueWorker.processBuild(cb.getId());
 
+        // Status should be RUNNING because comprehension check is pending
         ConceptBuild processed = conceptBuildService.getConceptBuildRecord(cb.getId());
+        assertThat(processed.getStatus()).isEqualTo(BuildStatus.RUNNING);
+
+        // Submit check to pass the build
+        submitMockCheck(cb.getId());
+
+        processed = conceptBuildService.getConceptBuildRecord(cb.getId());
         assertThat(processed.getStatus()).isEqualTo(BuildStatus.PASSED);
         assertThat(processed.isPassed()).isTrue();
 
@@ -165,7 +218,7 @@ class BuildModuleTest {
 
     @Test
     void testLevelBuildGatingForCadetStage() {
-        // Cadet stage skips cleanCode and SFIA alignment check
+        // Cadet stage skips cleanCode and SFIA alignment check but needs comprehension check
         LevelBuild lb = levelBuildService.createLevelBuild(
                 student.getId(), cadetStage.getId(), "https://github.com/test/level-1",
                 STUB_SOURCE, STUB_TESTS, "key-lb-1"
@@ -173,8 +226,13 @@ class BuildModuleTest {
         buildQueueWorker.processBuild(lb.getId());
 
         LevelBuild processed = levelBuildService.getLevelBuildRecord(lb.getId());
+        assertThat(processed.getStatus()).isEqualTo(BuildStatus.RUNNING);
+
+        submitMockCheck(lb.getId());
+
+        processed = levelBuildService.getLevelBuildRecord(lb.getId());
         assertThat(processed.getStatus()).isEqualTo(BuildStatus.PASSED);
-        assertThat(processed.isPassed()).isTrue(); // Passed because Cadet stage ignores cleanCodeScore
+        assertThat(processed.isPassed()).isTrue();
     }
 
     @Test
@@ -187,13 +245,63 @@ class BuildModuleTest {
                 STUB_SOURCE, STUB_TESTS, "key-lb-2"
         );
 
-        // We run the queue worker. By default, our mock sets cleanCodeScore=85 and sfiaAligned=true,
-        // so it passes the Engineer gates.
         buildQueueWorker.processBuild(lb.getId());
+
+        // Process enqueued reviews
+        processQueuedInstructorJobs();
+
+        // Submit check
+        submitMockCheck(lb.getId());
 
         LevelBuild processed = levelBuildService.getLevelBuildRecord(lb.getId());
         assertThat(processed.getStatus()).isEqualTo(BuildStatus.PASSED);
         assertThat(processed.isPassed()).isTrue();
+    }
+
+    @Test
+    void testBlankGeminiKeyFailsLevelBuild() {
+        // Setup student on Engineer stage
+        studentService.advanceToStage(student.getId(), engineerStage.getId());
+
+        // Store a blank Gemini token
+        credentialService.storeToken(student.getId(), com.merge.merge.identity.service.CredentialService.TokenType.GEMINI, "   ");
+
+        LevelBuild lb = levelBuildService.createLevelBuild(
+                student.getId(), engineerStage.getId(), "https://github.com/test/level-2-blank",
+                STUB_SOURCE, STUB_TESTS, "key-lb-blank"
+        );
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                com.merge.merge.identity.MissingCredentialException.class,
+                () -> buildQueueWorker.processBuild(lb.getId())
+        );
+
+        LevelBuild processed = levelBuildService.getLevelBuildRecord(lb.getId());
+        assertThat(processed.getStatus()).isNotEqualTo(BuildStatus.PASSED);
+    }
+
+    @Test
+    void testResubmitSameIdempotencyKeyCompletedBuildFails() {
+        // Create an initial LevelBuild with terminal FAILED state
+        LevelBuild lb = LevelBuild.builder()
+                .id(UUID.randomUUID())
+                .studentId(student.getId())
+                .stageId(engineerStage.getId())
+                .idempotencyKey("key-lb-terminal-test")
+                .status(BuildStatus.FAILED)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+        levelBuildRepository.save(lb);
+
+        // Attempting to submit another build with the same key should throw IllegalStateException
+        org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalStateException.class,
+                () -> levelBuildService.createLevelBuild(
+                        student.getId(), engineerStage.getId(), "link",
+                        STUB_SOURCE, STUB_TESTS, "key-lb-terminal-test"
+                )
+        );
     }
 
     @Test
@@ -205,7 +313,8 @@ class BuildModuleTest {
         ConceptBuild cb = conceptBuildService.createConceptBuild(
                 student.getId(), cadetConcept.getId(), "link", STUB_SOURCE, STUB_TESTS, "key-c"
         );
-        buildQueueWorker.processBuild(cb.getId()); // Sets passed=true, awards 20 XP
+        buildQueueWorker.processBuild(cb.getId());
+        submitMockCheck(cb.getId());
 
         // 2. Award additional XP to meet the Cadet threshold (50 XP)
         studentService.awardXp(student.getId(), 30); // 20 + 30 = 50 XP
@@ -214,7 +323,8 @@ class BuildModuleTest {
         LevelBuild lb = levelBuildService.createLevelBuild(
                 student.getId(), cadetStage.getId(), "link", STUB_SOURCE, STUB_TESTS, "key-l"
         );
-        buildQueueWorker.processBuild(lb.getId()); // Sets passed=true, awards 100 XP, triggers promoteIfEligible
+        buildQueueWorker.processBuild(lb.getId());
+        submitMockCheck(lb.getId());
 
         // Student should now be advanced to the Engineer stage
         Student updatedStudent = studentService.getById(student.getId());
@@ -223,15 +333,25 @@ class BuildModuleTest {
         // Now test Graduation (promoting past the final stage)
         // 1. Pass the Engineer concept
         ConceptBuild cb2 = conceptBuildService.createConceptBuild(student.getId(), engineerConcept.getId(), "link", STUB_SOURCE, STUB_TESTS, "key-c2");
-        buildQueueWorker.processBuild(cb2.getId()); // +20 XP (Total: 170 XP)
+        buildQueueWorker.processBuild(cb2.getId());
+        submitMockCheck(cb2.getId());
 
         // 2. Total XP is now 170, which meets the Engineer Stage threshold of 150.
         // 3. Submit and pass Engineer LevelBuild
         LevelBuild lb2 = levelBuildService.createLevelBuild(student.getId(), engineerStage.getId(), "link", STUB_SOURCE, STUB_TESTS, "key-l2");
-        buildQueueWorker.processBuild(lb2.getId()); // graduation triggers since engineerStage is the final stage
+        buildQueueWorker.processBuild(lb2.getId());
+        processQueuedInstructorJobs();
+        submitMockCheck(lb2.getId());
 
         Student graduatedStudent = studentService.getById(student.getId());
-        assertThat(graduatedStudent.isInternshipEligible()).isTrue();
+        assertThat(graduatedStudent.isInternshipEligible()).isFalse();
+
+        // Submit and approve project to grant internship eligibility
+        com.merge.merge.project.model.Project proj = projectService.createProject(student.getId(), "given", "link", "prd");
+        projectService.updateProjectStatus(proj.getId(), com.merge.merge.project.model.ProjectStatus.APPROVED, "Approved!");
+
+        Student eligibleStudent = studentService.getById(student.getId());
+        assertThat(eligibleStudent.isInternshipEligible()).isTrue();
     }
 
     @Test

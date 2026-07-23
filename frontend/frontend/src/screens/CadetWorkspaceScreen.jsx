@@ -197,7 +197,7 @@ export default function CadetWorkspaceScreen() {
   const failureScenario = concept?.predefinedContentRef?.failureScenario || '';
   const teachingObjective = concept?.predefinedContentRef?.teachingObjective || '';
   const coreContent = concept?.predefinedContentRef?.coreContent || '';
-  const conceptTitle = teachingObjective || 'Concept';
+  const conceptTitle = concept?.name || teachingObjective || 'Concept';
 
   // Loading state
   if (loading) {

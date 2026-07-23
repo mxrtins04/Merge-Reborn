@@ -33,6 +33,7 @@ const concepts = [
     _id: UUID("20000000-1000-1000-1000-000000000001"),
     stageId: SCOUT_ID,
     order: 1,
+    name: "Computational Thinking",
     predefinedContentRef: {
       failureScenario: "The student attempts to solve every problem by writing code immediately, without first understanding the problem or breaking it into smaller parts. They struggle to explain their reasoning, produce solutions that only work for the specific example given, and cannot generalise their approach to related problems.",
       teachingObjective: "Decompose a real-world problem into a finite, ordered set of unambiguous steps. Identify patterns, abstractions, and sub-problems. Express a solution as an algorithm before writing any code.",
@@ -44,6 +45,7 @@ const concepts = [
     _id: UUID("20000000-1000-1000-1000-000000000002"),
     stageId: SCOUT_ID,
     order: 2,
+    name: "Clean Code Fundamentals",
     predefinedContentRef: {
       failureScenario: "The student writes code that works but is unreadable: single-letter variable names, functions hundreds of lines long, no consistent formatting, and comments that restate what the code does instead of why. A colleague cannot understand the code without asking the author.",
       teachingObjective: "Write code that communicates intent to a human reader without requiring explanation. Apply consistent naming conventions, keep functions focused on a single responsibility, and recognise when a comment is necessary versus when better naming removes the need for it.",
@@ -55,6 +57,7 @@ const concepts = [
     _id: UUID("20000000-1000-1000-1000-000000000003"),
     stageId: SCOUT_ID,
     order: 3,
+    name: "Variables and Data Types",
     predefinedContentRef: {
       failureScenario: "The student declares variables with vague names like 'x' or 'temp', uses the wrong type (e.g. storing a price as an integer, losing the decimal component), and is surprised when integer division truncates results. They are unsure when to use `long` versus `int` or when to prefer `double` over `float`.",
       teachingObjective: "Declare variables with descriptive names and the correct primitive or reference type for the data they hold. Predict the result of arithmetic operations across different numeric types. Distinguish between value types (primitives) and reference types (objects).",
@@ -66,6 +69,7 @@ const concepts = [
     _id: UUID("20000000-1000-1000-1000-000000000004"),
     stageId: SCOUT_ID,
     order: 4,
+    name: "Operators and Expressions",
     predefinedContentRef: {
       failureScenario: "The student is confused by operator precedence, writes `a = b = c` expecting two independent assignments, and does not understand that `==` on objects compares references rather than values. They misread compound assignment operators and cannot predict the result of bitwise or shift operations.",
       teachingObjective: "Apply arithmetic, relational, logical, assignment, and bitwise operators correctly. Predict evaluation order using operator precedence rules. Distinguish reference equality (`==`) from value equality (`.equals()`) for object types.",
@@ -77,6 +81,7 @@ const concepts = [
     _id: UUID("20000000-1000-1000-1000-000000000005"),
     stageId: SCOUT_ID,
     order: 5,
+    name: "Control Flow: Conditionals",
     predefinedContentRef: {
       failureScenario: "The student nests conditionals five levels deep when a single boolean expression would suffice, forgets to handle the else branch leading to unintended fall-through, and does not know when to prefer a `switch` statement over a chain of `if-else if` blocks. Edge-case inputs cause the code to take an unexpected path.",
       teachingObjective: "Express decision logic using `if`, `if-else`, `if-else if`, and `switch` statements. Reduce nesting by applying early-return and guard-clause patterns. Write conditions that are readable and account for every relevant case including edge cases.",
@@ -88,6 +93,7 @@ const concepts = [
     _id: UUID("20000000-1000-1000-1000-000000000006"),
     stageId: SCOUT_ID,
     order: 6,
+    name: "Control Flow: Loops",
     predefinedContentRef: {
       failureScenario: "The student writes a `while` loop that never terminates because the condition is never updated, or uses a `for` loop with an off-by-one error that causes an `ArrayIndexOutOfBoundsException`. They do not know when to use `break` or `continue`, and they cannot convert between `for`, `while`, and `do-while` loops.",
       teachingObjective: "Implement `for`, `while`, and `do-while` loops to repeat computation efficiently. Avoid infinite loops and off-by-one errors. Apply `break` and `continue` to control loop execution. Recognise when recursion is a cleaner alternative to iteration.",
@@ -99,6 +105,7 @@ const concepts = [
     _id: UUID("20000000-1000-1000-1000-000000000007"),
     stageId: SCOUT_ID,
     order: 7,
+    name: "Functions",
     predefinedContentRef: {
       failureScenario: "The student duplicates logic across the codebase instead of extracting it into a function. Their functions accept ten parameters, perform multiple unrelated operations, and rely on global state. They cannot articulate what a function's return type means or how the call stack works.",
       teachingObjective: "Define and call methods with clear names, appropriate parameter lists, and a single well-defined return type. Apply the single-responsibility principle at the method level. Trace execution through the call stack and understand how method scope isolates local variables.",
@@ -110,6 +117,7 @@ const concepts = [
     _id: UUID("20000000-1000-1000-1000-000000000008"),
     stageId: SCOUT_ID,
     order: 8,
+    name: "Arrays and Lists",
     predefinedContentRef: {
       failureScenario: "The student accesses an array element without checking bounds, confuses zero-based indexing with one-based counting, and does not know how to traverse or manipulate an array without printing every step. They are unsure whether to use an `int[]` array or an `ArrayList<Integer>` and cannot explain the trade-off.",
       teachingObjective: "Declare, initialise, and traverse fixed-size arrays and dynamic `ArrayList` collections. Perform common operations: add, remove, search, sort, and copy. Select the appropriate data structure based on whether the size is known at compile time.",
@@ -121,6 +129,7 @@ const concepts = [
     _id: UUID("20000000-1000-1000-1000-000000000009"),
     stageId: SCOUT_ID,
     order: 9,
+    name: "Strings",
     predefinedContentRef: {
       failureScenario: "The student concatenates strings inside a loop using `+`, causing O(n²) performance on large inputs. They are confused by the difference between `==` and `.equals()` on strings, and they do not know how to use format strings, split on a delimiter, or trim whitespace.",
       teachingObjective: "Manipulate strings using the methods of `java.lang.String`: substring, indexOf, contains, replace, split, trim, and format. Use `StringBuilder` when building strings incrementally. Apply `String.format()` or text blocks for readable output. Always compare strings with `.equals()` or `equalsIgnoreCase()`.",
@@ -132,6 +141,7 @@ const concepts = [
     _id: UUID("20000000-1000-1000-1000-000000000010"),
     stageId: SCOUT_ID,
     order: 10,
+    name: "Debugging Fundamentals",
     predefinedContentRef: {
       failureScenario: "When code does not behave as expected, the student's only strategy is to add `System.out.println` statements randomly and re-run. They do not set breakpoints, do not inspect variable state at the point of failure, and cannot read a stack trace to identify which line caused an exception.",
       teachingObjective: "Use a debugger to set breakpoints, step through code line by line, inspect variable values, and evaluate expressions at runtime. Read a Java stack trace and identify the root cause of an exception. Distinguish between compile-time errors, runtime exceptions, and logical bugs.",
@@ -143,6 +153,7 @@ const concepts = [
     _id: UUID("20000000-1000-1000-1000-000000000011"),
     stageId: SCOUT_ID,
     order: 11,
+    name: "Testing Fundamentals",
     predefinedContentRef: {
       failureScenario: "The student considers testing optional and only runs their code manually against a single example. When asked to verify a fix did not break existing behaviour, they have no mechanism to check. They do not know what a unit test is, what it asserts, or how to write one in JUnit.",
       teachingObjective: "Write JUnit 5 unit tests for individual methods. Use `@Test`, `@BeforeEach`, and assertion methods from `Assertions`. Follow the Arrange-Act-Assert pattern. Understand what a test proves and what it does not, and articulate the difference between a passing test and correct code.",
@@ -154,6 +165,7 @@ const concepts = [
     _id: UUID("20000000-1000-1000-1000-000000000012"),
     stageId: SCOUT_ID,
     order: 12,
+    name: "Git Fundamentals",
     predefinedContentRef: {
       failureScenario: "The student saves code by copying files to a folder named 'backup_v3_final_REAL'. They work directly on the main branch, cannot describe what a commit is, cannot reverse a mistake, and are blocked from collaborating because they do not understand branching or pull requests.",
       teachingObjective: "Use Git to initialise a repository, stage changes, commit with a meaningful message, push to a remote, create and merge branches, and resolve a simple merge conflict. Navigate commit history with `git log` and revert to a previous state with `git checkout` or `git restore`.",
@@ -165,6 +177,7 @@ const concepts = [
     _id: UUID("20000000-1000-1000-1000-000000000013"),
     stageId: SCOUT_ID,
     order: 13,
+    name: "Big-O Notation",
     predefinedContentRef: {
       failureScenario: "The student does not consider performance when choosing an algorithm, assumes that a nested loop over a list of 100,000 items will be fast enough, and cannot explain why a binary search is faster than a linear search. They conflate time complexity with actual execution time and cannot read or write Big-O expressions.",
       teachingObjective: "Express the time and space complexity of an algorithm using Big-O notation. Identify the complexity class of common patterns: O(1) lookup, O(log n) binary search, O(n) linear scan, O(n log n) comparison sort, O(n²) nested iteration. Use complexity analysis to choose between competing implementations.",
@@ -176,6 +189,7 @@ const concepts = [
     _id: UUID("20000000-1000-1000-1000-000000000014"),
     stageId: SCOUT_ID,
     order: 14,
+    name: "Memory and Storage",
     predefinedContentRef: {
       failureScenario: "The student believes that declaring more variables always consumes more memory regardless of type, does not know the difference between stack and heap allocation, and cannot explain what happens to an object after the last reference to it is released. They are confused by `NullPointerException` and do not know what `null` represents.",
       teachingObjective: "Describe how the JVM allocates memory on the stack and the heap. Explain the lifecycle of an object from allocation to garbage collection. Interpret a `NullPointerException` and trace its cause. Describe the difference between value semantics (primitives) and reference semantics (objects).",
@@ -187,6 +201,7 @@ const concepts = [
     _id: UUID("20000000-1000-1000-1000-000000000015"),
     stageId: SCOUT_ID,
     order: 15,
+    name: "Core Data Structures",
     predefinedContentRef: {
       failureScenario: "The student uses an array for every collection problem regardless of access pattern, does not know what a stack or queue is, and cannot explain why a HashMap lookup is faster than scanning an ArrayList for a key. They are unaware that data structure choice determines algorithm complexity.",
       teachingObjective: "Select the appropriate data structure for a problem based on its access pattern. Describe the time complexity of the core operations (add, remove, search, access) for arrays, linked lists, stacks, queues, hash maps, and sets. Implement a stack and queue using Java collections.",
@@ -202,6 +217,7 @@ const concepts = [
     _id: UUID("30000000-1000-1000-1000-000000000001"),
     stageId: CADET_ID,
     order: 1,
+    name: "Object-Oriented Programming",
     predefinedContentRef: {
       failureScenario: "The student writes procedural code organised into a single massive class, passes dozens of primitive parameters between methods instead of passing objects, and cannot explain the relationship between a class and an object. They have heard of OOP but treat it as optional syntax rather than a design philosophy.",
       teachingObjective: "Model a real-world domain as a set of collaborating objects. Define classes with fields, constructors, and methods. Instantiate objects and invoke methods on them. Explain the difference between a class (blueprint) and an object (instance) and describe why OOP organises code around data rather than procedures.",
@@ -213,6 +229,7 @@ const concepts = [
     _id: UUID("30000000-1000-1000-1000-000000000002"),
     stageId: CADET_ID,
     order: 2,
+    name: "Encapsulation and Abstraction",
     predefinedContentRef: {
       failureScenario: "The student makes every field `public`, allowing any class to directly read or modify internal state. When the internal representation changes, every caller breaks. They also define large concrete classes instead of identifying the minimal interface needed by callers, creating tight coupling throughout the codebase.",
       teachingObjective: "Apply encapsulation by restricting field access to `private` and exposing controlled mutation via public methods. Design abstractions that hide implementation detail behind a minimal, stable interface. Identify what to expose and what to keep hidden by thinking from the caller's perspective.",
@@ -224,6 +241,7 @@ const concepts = [
     _id: UUID("30000000-1000-1000-1000-000000000003"),
     stageId: CADET_ID,
     order: 3,
+    name: "Inheritance",
     predefinedContentRef: {
       failureScenario: "The student copies and pastes identical logic across multiple classes rather than extracting shared behaviour into a superclass. They override a method in a subclass but call the parent implementation incorrectly, or they create deep inheritance hierarchies five levels deep that are impossible to follow.",
       teachingObjective: "Use `extends` to create a subclass that inherits fields and methods from a superclass. Override methods to specialise behaviour, calling `super` when the parent implementation should be preserved. Recognise when inheritance is the right tool versus when it creates excessive coupling.",
@@ -235,6 +253,7 @@ const concepts = [
     _id: UUID("30000000-1000-1000-1000-000000000004"),
     stageId: CADET_ID,
     order: 4,
+    name: "Polymorphism",
     predefinedContentRef: {
       failureScenario: "The student checks the runtime type of objects with `instanceof` chains and casts before calling type-specific methods, reproducing the exact problem that polymorphism is designed to solve. They do not understand how method dispatch selects the overridden version at runtime.",
       teachingObjective: "Invoke methods on a reference of a parent type and rely on dynamic dispatch to call the correct overridden implementation at runtime. Remove `instanceof` checks by pushing type-specific behaviour into the appropriate subclass. Understand the difference between compile-time type and runtime type.",
@@ -246,6 +265,7 @@ const concepts = [
     _id: UUID("30000000-1000-1000-1000-000000000005"),
     stageId: CADET_ID,
     order: 5,
+    name: "Interfaces and Contracts",
     predefinedContentRef: {
       failureScenario: "The student implements concrete classes for every abstraction, creating tight coupling between components. When a dependency changes, every class that references it must be modified. They do not know what an interface is or why defining behaviour as a contract independent of implementation enables testability and flexibility.",
       teachingObjective: "Define an interface to express a contract — a set of method signatures — that multiple implementations can fulfil. Program to interfaces rather than concrete classes. Swap implementations without changing callers. Use interfaces to enable dependency injection and mock testing.",
@@ -257,6 +277,7 @@ const concepts = [
     _id: UUID("30000000-1000-1000-1000-000000000006"),
     stageId: CADET_ID,
     order: 6,
+    name: "SOLID Principles",
     predefinedContentRef: {
       failureScenario: "The student writes classes that accumulate responsibilities over time, methods that are hundreds of lines long mixing business logic with I/O, and classes that are impossible to test because they directly instantiate their dependencies. They have not heard of SOLID or cannot connect the principles to concrete code decisions.",
       teachingObjective: "Apply each of the five SOLID principles to identify design problems and propose improvements. Refactor a class that violates SRP into focused, single-responsibility units. Apply OCP to add behaviour without modifying existing code. Apply DIP to depend on abstractions rather than concretions.",
@@ -268,6 +289,7 @@ const concepts = [
     _id: UUID("30000000-1000-1000-1000-000000000007"),
     stageId: CADET_ID,
     order: 7,
+    name: "Composition over Inheritance",
     predefinedContentRef: {
       failureScenario: "The student uses inheritance to reuse code even when there is no genuine is-a relationship, leading to subclasses that inherit methods that do not make sense for them. They have to override every inherited method to throw `UnsupportedOperationException`, a clear signal that inheritance is being misused.",
       teachingObjective: "Identify when inheritance is the wrong tool and replace it with composition. Use composition to assemble behaviour from small, focused collaborators rather than inheriting it from a superclass. Explain why 'favour composition over inheritance' applies and articulate the trade-offs.",
@@ -279,6 +301,7 @@ const concepts = [
     _id: UUID("30000000-1000-1000-1000-000000000008"),
     stageId: CADET_ID,
     order: 8,
+    name: "Java Collections Framework",
     predefinedContentRef: {
       failureScenario: "The student uses `ArrayList` for every collection regardless of access pattern, is unaware of `LinkedList`, `HashMap`, `HashSet`, `TreeMap`, or `PriorityQueue`, and cannot write code that exploits the specific performance characteristics of the collection chosen. They do not know how to iterate safely while removing elements.",
       teachingObjective: "Select the appropriate `java.util` collection type for a given access pattern. Use `Iterator` and `removeIf` for safe mutation during iteration. Apply `Collections` utility methods. Explain the performance characteristics of `ArrayList`, `LinkedList`, `HashMap`, `TreeMap`, `HashSet`, and `PriorityQueue`.",
@@ -290,6 +313,7 @@ const concepts = [
     _id: UUID("30000000-1000-1000-1000-000000000009"),
     stageId: CADET_ID,
     order: 9,
+    name: "Exception Handling",
     predefinedContentRef: {
       failureScenario: "The student uses bare `catch (Exception e) {}` blocks that silently swallow errors, throws `Exception` from every method, and does not distinguish between recoverable and unrecoverable conditions. They are unaware of checked versus unchecked exceptions and how each affects the caller's contract.",
       teachingObjective: "Design an exception strategy that distinguishes checked exceptions (recoverable conditions callers must handle) from unchecked exceptions (programming errors). Catch only exceptions you can meaningfully handle. Include enough context in the exception message to diagnose the failure. Use `finally` and try-with-resources for guaranteed cleanup.",
@@ -301,6 +325,7 @@ const concepts = [
     _id: UUID("30000000-1000-1000-1000-000000000010"),
     stageId: CADET_ID,
     order: 10,
+    name: "File I/O and Streams",
     predefinedContentRef: {
       failureScenario: "The student reads an entire file into memory as a `String` before processing it, does not close file handles, and does not know how to write to a file or process a file line by line. They conflate `InputStream` (raw bytes) with `Reader` (characters) and do not understand charset encoding.",
       teachingObjective: "Read and write files using `BufferedReader`, `BufferedWriter`, `Files` (NIO.2), and streams. Process files line by line without loading them entirely into memory. Use try-with-resources to guarantee resource cleanup. Choose the correct abstraction for binary data versus text data.",
@@ -312,6 +337,7 @@ const concepts = [
     _id: UUID("30000000-1000-1000-1000-000000000011"),
     stageId: CADET_ID,
     order: 11,
+    name: "Lambdas and Functional Interfaces",
     predefinedContentRef: {
       failureScenario: "The student writes verbose anonymous inner classes where a lambda would be clearer, does not know what a functional interface is, and cannot use `stream()` to filter, map, or collect a collection. They reach for an explicit loop when a single `stream().filter().map().collect()` chain would be more readable.",
       teachingObjective: "Replace anonymous inner classes with lambda expressions where the target type is a functional interface. Compose stream pipelines using `filter`, `map`, `flatMap`, `sorted`, `distinct`, `limit`, `reduce`, and `collect`. Select the appropriate `Collector` for the result type. Use method references (`Class::method`) to improve readability.",
@@ -323,6 +349,7 @@ const concepts = [
     _id: UUID("30000000-1000-1000-1000-000000000012"),
     stageId: CADET_ID,
     order: 12,
+    name: "Design Patterns",
     predefinedContentRef: {
       failureScenario: "The student reinvents common solutions — custom event dispatch, ad-hoc object factories, nested observers — without recognising that well-known, documented design patterns solve these exact problems. When code becomes hard to maintain, they add more ad-hoc complexity rather than reaching for a pattern that communicates intent to other engineers.",
       teachingObjective: "Identify the problem that each major design pattern addresses. Implement the Singleton, Factory Method, Builder, Strategy, Observer, and Decorator patterns in Java. Recognise pattern use in existing frameworks (e.g. Spring uses Factory, Template Method, Proxy, and Observer extensively). Prefer named patterns over ad-hoc duplication.",
@@ -338,6 +365,7 @@ const concepts = [
     _id: UUID("40000000-1000-1000-1000-000000000001"),
     stageId: BUILDER_ID,
     order: 1,
+    name: "Spring Boot Fundamentals",
     predefinedContentRef: {
       failureScenario: "The student starts a Spring Boot project but is paralysed by the volume of auto-configuration magic. They do not understand how beans are created, what the application context is, or why annotating a class with `@Service` makes it injectable elsewhere. Configuration errors produce cryptic startup failures they cannot diagnose.",
       teachingObjective: "Bootstrap a Spring Boot application from scratch. Explain the role of the application context, bean lifecycle, and dependency injection. Configure properties via `application.properties`. Diagnose startup failures using auto-configuration reports and the startup log.",
@@ -349,6 +377,7 @@ const concepts = [
     _id: UUID("40000000-1000-1000-1000-000000000002"),
     stageId: BUILDER_ID,
     order: 2,
+    name: "REST API Design",
     predefinedContentRef: {
       failureScenario: "The student exposes business objects directly as JSON, uses `GET` for operations that mutate state, returns 200 for every response regardless of outcome, and places all logic in a single controller method. Their API is unpredictable, hard to version, and cannot be consumed without reading the source code.",
       teachingObjective: "Design a RESTful HTTP API that correctly uses HTTP verbs, status codes, and resource-oriented URL structures. Implement CRUD endpoints with `@RestController`, `@RequestMapping`, `@PathVariable`, and `@RequestBody`. Return `ResponseEntity` with appropriate status codes. Separate API concerns (request/response DTOs) from domain models.",
@@ -360,6 +389,7 @@ const concepts = [
     _id: UUID("40000000-1000-1000-1000-000000000003"),
     stageId: BUILDER_ID,
     order: 3,
+    name: "Input Validation and Error Handling",
     predefinedContentRef: {
       failureScenario: "The student accepts request bodies without validating them, trusting callers to send correct data. Negative prices, empty required fields, and malformed email addresses all reach the database. When persistence fails due to constraint violations, the database error propagates to the caller as a 500 rather than a 400.",
       teachingObjective: "Apply Bean Validation annotations (`@NotNull`, `@NotBlank`, `@Min`, `@Max`, `@Email`, `@Pattern`) to request DTOs. Trigger validation with `@Valid` on controller parameters. Handle `MethodArgumentNotValidException` globally in a `@ControllerAdvice` to return structured 400 responses. Write a custom constraint annotation for domain-specific rules.",
@@ -371,6 +401,7 @@ const concepts = [
     _id: UUID("40000000-1000-1000-1000-000000000004"),
     stageId: BUILDER_ID,
     order: 4,
+    name: "Spring Security Fundamentals",
     predefinedContentRef: {
       failureScenario: "The student's API is entirely open — no authentication, no authorisation. Adding security is an afterthought; they are unsure whether to put auth logic in each controller, a servlet filter, or a separate service. When asked to restrict endpoints to authenticated users only, they do not know where to start.",
       teachingObjective: "Configure Spring Security to require authentication on protected endpoints while leaving public endpoints open. Understand the security filter chain and where authentication and authorisation decisions are made. Apply `@PreAuthorize` for method-level security. Describe the difference between authentication (who are you?) and authorisation (what are you allowed to do?).",
@@ -382,6 +413,7 @@ const concepts = [
     _id: UUID("40000000-1000-1000-1000-000000000005"),
     stageId: BUILDER_ID,
     order: 5,
+    name: "JWT Authentication",
     predefinedContentRef: {
       failureScenario: "The student stores passwords in plain text, uses a symmetric key shared across all users as an auth token, or embeds user state in the token without verifying it server-side. Their token does not expire, is transmitted in a URL parameter, and is stored in `localStorage` where a script can steal it.",
       teachingObjective: "Implement stateless JWT-based authentication: issue a signed access token on login, validate the token on each request, and refresh it via a long-lived refresh token. Understand the structure of a JWT (header, payload, signature). Store tokens securely on the client. Implement token rotation to detect refresh token theft.",
@@ -393,6 +425,7 @@ const concepts = [
     _id: UUID("40000000-1000-1000-1000-000000000006"),
     stageId: BUILDER_ID,
     order: 6,
+    name: "PostgreSQL Fundamentals",
     predefinedContentRef: {
       failureScenario: "The student writes SQL with string concatenation, exposing the application to SQL injection. They do not understand indexes, run a `SELECT *` with a LIKE scan on an unindexed column for every request, and do not know how to design a normalised schema or interpret an `EXPLAIN` output.",
       teachingObjective: "Design a normalised relational schema in PostgreSQL. Write safe parameterised queries. Use `EXPLAIN ANALYSE` to identify missing indexes. Create indexes on high-cardinality filter and join columns. Understand the trade-offs of normalisation and denormalisation.",
@@ -404,6 +437,7 @@ const concepts = [
     _id: UUID("40000000-1000-1000-1000-000000000007"),
     stageId: BUILDER_ID,
     order: 7,
+    name: "Spring Data JPA",
     predefinedContentRef: {
       failureScenario: "The student writes raw SQL strings in Java code, does not use connection pooling, and reinvents CRUD operations that Spring Data JPA provides automatically. When querying, they load entire object graphs into memory when only one column is needed, and they are not aware of the N+1 query problem.",
       teachingObjective: "Map domain entities to database tables using JPA annotations. Write repositories using Spring Data JPA's `JpaRepository`. Implement custom JPQL and native queries. Fetch only the data needed using projections. Diagnose and resolve the N+1 query problem with `JOIN FETCH` or `@EntityGraph`.",
@@ -415,6 +449,7 @@ const concepts = [
     _id: UUID("40000000-1000-1000-1000-000000000008"),
     stageId: BUILDER_ID,
     order: 8,
+    name: "Database Transactions",
     predefinedContentRef: {
       failureScenario: "The student calls multiple database operations without wrapping them in a transaction. When the second operation fails, the first is already committed, leaving the database in an inconsistent state. They apply `@Transactional` without understanding propagation or isolation, or they place it on a `private` method where it has no effect.",
       teachingObjective: "Identify operations that must be atomic and wrap them in a transaction using Spring's `@Transactional`. Explain ACID properties and their implications. Select the appropriate isolation level for a given use case. Diagnose and resolve deadlocks and optimistic locking conflicts.",
@@ -426,6 +461,7 @@ const concepts = [
     _id: UUID("40000000-1000-1000-1000-000000000009"),
     stageId: BUILDER_ID,
     order: 9,
+    name: "Docker and Containerisation",
     predefinedContentRef: {
       failureScenario: "The student's application works on their laptop but fails on a colleague's machine due to different JDK versions, missing environment variables, and operating system differences. They have no reproducible way to run the full stack including the database, and deployment to a server requires manual steps that are not documented.",
       teachingObjective: "Package a Spring Boot application as a Docker image. Write a production-quality `Dockerfile` using a multi-stage build. Define a `docker-compose.yml` that runs the application, database, and cache together. Understand how Docker networking, volumes, and environment variable injection work.",
@@ -437,6 +473,7 @@ const concepts = [
     _id: UUID("40000000-1000-1000-1000-000000000010"),
     stageId: BUILDER_ID,
     order: 10,
+    name: "Integration and API Testing",
     predefinedContentRef: {
       failureScenario: "The student's tests mock every dependency so completely that the tests pass even when the integration points are broken. They do not know how to test a Spring MVC controller without starting a full server, or how to test a JPA repository against a real database.",
       teachingObjective: "Write integration tests using `@SpringBootTest`, `MockMvc`, and Testcontainers. Test the full HTTP layer without starting a real server. Assert database state after a write operation. Use `@Transactional` on tests to roll back between test methods. Distinguish unit, integration, and end-to-end tests and know when to use each.",
@@ -448,6 +485,7 @@ const concepts = [
     _id: UUID("40000000-1000-1000-1000-000000000011"),
     stageId: BUILDER_ID,
     order: 11,
+    name: "CI/CD and Deployment",
     predefinedContentRef: {
       failureScenario: "The student deploys by SSH-ing into a server, copying a JAR, and hoping no one notices the downtime. There is no automated build, no test run in CI, and no way to roll back a bad deployment. Colleagues cannot merge code confidently because there is no gate preventing broken builds from reaching production.",
       teachingObjective: "Configure a CI pipeline (GitHub Actions) that builds the application, runs the full test suite, and produces a Docker image on every push to `main`. Implement a deployment workflow that pushes the image to a registry and deploys it. Understand the difference between continuous integration, continuous delivery, and continuous deployment.",
@@ -463,6 +501,7 @@ const concepts = [
     _id: UUID("50000000-1000-1000-1000-000000000001"),
     stageId: ENGINEER_ID,
     order: 1,
+    name: "System Design Foundations",
     predefinedContentRef: {
       failureScenario: "The student is asked to design a URL shortener or rate limiter and immediately proposes a complex microservices architecture with event sourcing and a global CDN, without first understanding the scale requirements, read/write ratio, or consistency needs. They add complexity as a substitute for analysis.",
       teachingObjective: "Approach a system design problem with structured analysis: clarify requirements, estimate scale, identify bottlenecks, and select components that match actual constraints. Draw a component diagram. Reason about trade-offs: latency versus consistency, simplicity versus scalability, cost versus reliability.",
@@ -474,6 +513,7 @@ const concepts = [
     _id: UUID("50000000-1000-1000-1000-000000000002"),
     stageId: ENGINEER_ID,
     order: 2,
+    name: "Distributed Systems Concepts",
     predefinedContentRef: {
       failureScenario: "The student assumes distributed systems behave like local systems — that network calls are reliable and instant, that clocks on different machines are synchronised, and that a write to one node is immediately visible to all nodes. Their service fails silently when a downstream dependency is unavailable.",
       teachingObjective: "Apply the eight fallacies of distributed computing to identify assumptions that break in production. Design services that handle partial failures gracefully using timeouts, retries with exponential backoff, circuit breakers, and bulkheads. Reason about consistency models: strong, causal, and eventual consistency.",
@@ -485,6 +525,7 @@ const concepts = [
     _id: UUID("50000000-1000-1000-1000-000000000003"),
     stageId: ENGINEER_ID,
     order: 3,
+    name: "Apache Kafka",
     predefinedContentRef: {
       failureScenario: "The student's service writes directly to the downstream service in the request-response path. When the downstream service is slow, every upstream request blocks and the whole system degrades. They do not understand how to decouple producers from consumers or how to handle back-pressure.",
       teachingObjective: "Design event-driven communication between services using Apache Kafka. Produce and consume messages with correct partition assignment, consumer group semantics, and at-least-once delivery guarantees. Handle out-of-order and duplicate messages idempotently. Monitor consumer lag.",
@@ -496,6 +537,7 @@ const concepts = [
     _id: UUID("50000000-1000-1000-1000-000000000004"),
     stageId: ENGINEER_ID,
     order: 4,
+    name: "Redis and Caching",
     predefinedContentRef: {
       failureScenario: "The student queries the database on every request without caching, causing the database to become the bottleneck under load. Their cache strategy results in stale data being served indefinitely, and cache stampedes (many cache misses simultaneously refilling the cache) periodically spike database load.",
       teachingObjective: "Implement a cache-aside pattern in Spring using Redis. Set appropriate TTLs and handle cache invalidation on writes. Implement a rate limiter using Redis atomic operations. Explain the cache-aside, write-through, and write-behind patterns and their consistency trade-offs.",
@@ -507,6 +549,7 @@ const concepts = [
     _id: UUID("50000000-1000-1000-1000-000000000005"),
     stageId: ENGINEER_ID,
     order: 5,
+    name: "Horizontal Scaling Patterns",
     predefinedContentRef: {
       failureScenario: "The student's service runs on a single server that is overwhelmed under load. They believe adding more RAM or CPU to the same server is the only way to handle more traffic. They cannot describe how a load balancer distributes requests or what state management challenges arise when multiple instances share traffic.",
       teachingObjective: "Design stateless services that can be horizontally scaled by running multiple identical instances behind a load balancer. Explain round-robin, least-connections, and consistent-hashing load balancing. Identify state that prevents horizontal scaling (sticky sessions, in-memory cache, local file system) and move it to shared infrastructure.",
@@ -518,6 +561,7 @@ const concepts = [
     _id: UUID("50000000-1000-1000-1000-000000000006"),
     stageId: ENGINEER_ID,
     order: 6,
+    name: "Kubernetes",
     predefinedContentRef: {
       failureScenario: "The student deploys containerised services manually by SSH-ing into servers and running `docker run` commands. They do not know how to handle service discovery, rolling updates, or automatic restarts when a container crashes. Their deployment process is manual, error-prone, and does not scale to dozens of services.",
       teachingObjective: "Deploy and operate a containerised application on Kubernetes. Write a `Deployment` manifest and a `Service` manifest. Perform a rolling update and roll back on failure. Configure liveness and readiness probes. Understand how the control plane, nodes, pods, and the kubelet relate.",
@@ -529,6 +573,7 @@ const concepts = [
     _id: UUID("50000000-1000-1000-1000-000000000007"),
     stageId: ENGINEER_ID,
     order: 7,
+    name: "Observability and Monitoring",
     predefinedContentRef: {
       failureScenario: "The student's service degrades silently in production. Users report slowness, but the team has no dashboards, no alerting, no distributed traces, and no structured logs. They spend hours SSH-ing through logs on multiple servers trying to reconstruct what happened, without knowing which service caused the problem.",
       teachingObjective: "Implement the three pillars of observability: structured logging with correlation IDs, metrics exported to Prometheus and visualised in Grafana, and distributed tracing with OpenTelemetry. Define meaningful SLIs, SLOs, and error budgets. Set up alerting that pages on SLO breaches rather than on raw metrics.",
@@ -540,6 +585,7 @@ const concepts = [
     _id: UUID("50000000-1000-1000-1000-000000000008"),
     stageId: ENGINEER_ID,
     order: 8,
+    name: "Performance Engineering",
     predefinedContentRef: {
       failureScenario: "The student's service is slow in production but fast in development. They add indexes at random without measuring, add an in-memory cache that is never hit, and run load tests that do not reflect production traffic patterns. They cannot identify whether the bottleneck is CPU, I/O, network, or a slow database query.",
       teachingObjective: "Profile a JVM application to identify CPU and memory bottlenecks. Analyse slow database queries with `EXPLAIN ANALYSE`. Measure throughput and latency under load with JMH or k6. Apply the USE method (Utilisation, Saturation, Errors) to identify the resource that is the bottleneck.",
@@ -555,6 +601,7 @@ const concepts = [
     _id: UUID("60000000-1000-1000-1000-000000000001"),
     stageId: ARCHITECT_ID,
     order: 1,
+    name: "Domain-Driven Design",
     predefinedContentRef: {
       failureScenario: "The student's codebase has no clear domain model. Business logic is scattered across service classes, HTTP controllers, and database repositories. When the business rules change, every layer needs to be modified. The codebase cannot be tested without standing up the entire infrastructure stack.",
       teachingObjective: "Model a complex business domain using DDD building blocks: Entities, Value Objects, Aggregates, Domain Events, Repositories, and Domain Services. Place business invariants inside Aggregates. Separate domain logic from infrastructure concerns using a ports-and-adapters (hexagonal) architecture. Identify bounded contexts and define context maps.",
@@ -566,6 +613,7 @@ const concepts = [
     _id: UUID("60000000-1000-1000-1000-000000000002"),
     stageId: ARCHITECT_ID,
     order: 2,
+    name: "CQRS",
     predefinedContentRef: {
       failureScenario: "The student uses the same data model for writes (commands) and reads (queries). Complex reporting queries with many JOINs compete with write operations on the same tables, degrading write throughput. Adding a new read requirement requires schema changes that affect write performance.",
       teachingObjective: "Apply the CQRS pattern to separate the write model (command side) from the read model (query side). Implement a command handler that validates commands and applies them to aggregates. Maintain a denormalised read model (projection) optimised for queries. Explain when CQRS adds value and when it adds unnecessary complexity.",
@@ -577,6 +625,7 @@ const concepts = [
     _id: UUID("60000000-1000-1000-1000-000000000003"),
     stageId: ARCHITECT_ID,
     order: 3,
+    name: "Event Sourcing",
     predefinedContentRef: {
       failureScenario: "The student stores only the current state of an entity. When a business analyst asks 'what was the account balance on a specific date?' or 'who changed this record and when?', there is no answer. Auditing is a logging afterthought that is incomplete and disconnected from the business model.",
       teachingObjective: "Implement an event-sourced aggregate that persists its state as an append-only sequence of domain events. Rebuild current state by replaying the event log. Build a time-travel query: reconstruct the state at any past point in time. Explain the trade-offs of event sourcing versus state-based persistence.",
@@ -588,6 +637,7 @@ const concepts = [
     _id: UUID("60000000-1000-1000-1000-000000000004"),
     stageId: ARCHITECT_ID,
     order: 4,
+    name: "Platform Engineering",
     predefinedContentRef: {
       failureScenario: "The student's organisation has dozens of teams each setting up their own CI pipelines, Kubernetes clusters, observability stacks, and security policies from scratch. Engineers spend more time on infrastructure than on product features. Practices vary widely, making it hard to move engineers between teams.",
       teachingObjective: "Design an Internal Developer Platform that abstracts infrastructure complexity behind self-service workflows. Identify the capabilities a platform should provide (golden paths, deployment pipelines, environment provisioning, observability). Apply the Team Topologies model to structure the platform team's relationship with stream-aligned teams.",
@@ -599,6 +649,7 @@ const concepts = [
     _id: UUID("60000000-1000-1000-1000-000000000005"),
     stageId: ARCHITECT_ID,
     order: 5,
+    name: "Architecture Patterns and Trade-offs",
     predefinedContentRef: {
       failureScenario: "The student recommends microservices for every project without analysing whether the team size, domain complexity, or deployment frequency justify the operational overhead. Alternatively, they dismiss all architectural patterns as unnecessary complexity and produce a monolith that becomes unmaintainable as the team grows.",
       teachingObjective: "Evaluate multiple architectural styles — layered monolith, modular monolith, microservices, event-driven, hexagonal — against a set of real requirements and constraints. Document the chosen architecture using Architecture Decision Records (ADRs). Reason about fitness functions that verify architectural constraints automatically.",
@@ -610,6 +661,7 @@ const concepts = [
     _id: UUID("60000000-1000-1000-1000-000000000006"),
     stageId: ARCHITECT_ID,
     order: 6,
+    name: "Technical Leadership",
     predefinedContentRef: {
       failureScenario: "The student is technically excellent but ineffective in a staff or principal engineer role. They do not produce RFCs, cannot give actionable technical feedback in code review, underestimate the impact of communication and documentation, and struggle to influence decisions in cross-team settings without formal authority.",
       teachingObjective: "Produce a technical RFC (Request for Comments) that clearly states the problem, alternatives considered, the proposed solution, and its consequences. Give code review feedback that is specific, actionable, and respectful. Influence a cross-team technical decision without formal authority by building credibility through evidence and stakeholder relationships.",
@@ -621,6 +673,7 @@ const concepts = [
     _id: UUID("60000000-1000-1000-1000-000000000007"),
     stageId: ARCHITECT_ID,
     order: 7,
+    name: "Site Reliability Engineering",
     predefinedContentRef: {
       failureScenario: "The student's services have no availability targets and no defined error budgets. When an outage occurs, the post-mortem identifies symptoms rather than root causes, assigns blame, and produces a long list of action items that are never prioritised or completed. The same class of failure recurs.",
       teachingObjective: "Define and measure availability using SLIs and SLOs. Maintain an error budget and use it to gate feature work. Run a blameless post-mortem that identifies systemic contributing factors and produces a prioritised set of action items. Design for reliability using chaos engineering and failure mode analysis.",

@@ -102,4 +102,14 @@ public interface InstructorService {
      * Retrieves an Instructor job/record.
      */
     Instructor getInstructorRecord(UUID id);
+
+    /**
+     * Generates 3 comprehension questions for the student's own build code.
+     */
+    Instructor generateBuildComprehensionSync(UUID studentId, UUID conceptId, String code);
+
+    /**
+     * Evaluates comprehension check answers.
+     */
+    boolean evaluateComprehensionCheck(UUID studentId, String questions, String expectedAnswers, String studentAnswers);
 }

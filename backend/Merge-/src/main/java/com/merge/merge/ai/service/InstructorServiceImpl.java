@@ -37,6 +37,7 @@ public class InstructorServiceImpl implements InstructorService {
     private final ApplicationEventPublisher eventPublisher;
     private final CredentialService credentialService;
     private final ConceptService conceptService;
+    private final com.merge.merge.curriculum.repository.ConceptRepository conceptRepository;
 
     private static final String QUEUE_NAME = "instructor:job:queue";
 
@@ -262,6 +263,14 @@ public class InstructorServiceImpl implements InstructorService {
 
     @Override
     public Instructor generateReflectionAsync(UUID studentId, UUID conceptId, boolean passed, boolean isGraduation, String idempotencyKey) {
+        if (idempotencyKey != null) {
+            var existingJob = instructorRepository.findByIdempotencyKey(idempotencyKey);
+            if (existingJob.isPresent()) {
+                log.info("REFLECT job already exists for idempotencyKey: {}. Returning existing.", idempotencyKey);
+                return existingJob.get();
+            }
+        }
+
         // Guarded: check for existing successful generation
         List<Instructor> existing = instructorRepository.findByActionTypeAndStudentIdAndConceptIdAndStatus(
                 InstructorActionType.REFLECT, studentId, conceptId, InstructorStatus.COMPLETED
@@ -370,7 +379,16 @@ public class InstructorServiceImpl implements InstructorService {
     }
 
     private String buildPrompt(Instructor job) {
-        Concept concept = job.getConceptId() != null ? conceptService.getById(job.getConceptId()) : null;
+        Concept concept = null;
+        if (job.getConceptId() != null) {
+            concept = conceptRepository.findById(job.getConceptId()).orElse(null);
+            if (concept == null) {
+                List<Concept> stageConcepts = conceptRepository.findByStageId(job.getConceptId());
+                if (!stageConcepts.isEmpty()) {
+                    concept = stageConcepts.get(0);
+                }
+            }
+        }
         PredefinedContentRef content = concept != null ? concept.getPredefinedContentRef() : null;
         String topic     = content != null ? content.getTeachingObjective() : "unknown concept";
         String core      = content != null ? content.getCoreContent()       : "";
@@ -560,9 +578,104 @@ public class InstructorServiceImpl implements InstructorService {
 
     private String getGeminiToken(UUID studentId) {
         try {
-            return credentialService.getDecryptedToken(studentId, CredentialService.TokenType.GEMINI);
+            String token = credentialService.getDecryptedToken(studentId, CredentialService.TokenType.GEMINI);
+            if (token == null || token.trim().isEmpty()) {
+                throw new MissingCredentialException("Gemini API key is required and cannot be blank. Please submit a valid token.");
+            }
+            return token;
         } catch (ResourceNotFoundException e) {
             throw new MissingCredentialException("Gemini API key is required. Please submit your token first.");
         }
+    }
+
+    @Override
+    public Instructor generateBuildComprehensionSync(UUID studentId, UUID conceptOrStageId, String code) {
+        log.info("Generating COMPREHENSION_GENERATE for build code synchronously for student: {}, concept/stage: {}", studentId, conceptOrStageId);
+
+        Concept concept = conceptRepository.findById(conceptOrStageId).orElse(null);
+        if (concept == null) {
+            List<Concept> stageConcepts = conceptRepository.findByStageId(conceptOrStageId);
+            if (!stageConcepts.isEmpty()) {
+                concept = stageConcepts.get(0);
+            }
+        }
+
+        if (concept == null) {
+            throw new com.merge.merge.shared.ResourceNotFoundException("No concept found for ID or Stage ID: " + conceptOrStageId);
+        }
+
+        PredefinedContentRef content = concept.getPredefinedContentRef();
+
+        String prompt = String.format(
+                """
+                You are an expert software engineering tutor.
+                The student has submitted the following code that passed unit tests for the concept: %%s (goal: %%s).
+
+                Submitted code:
+                %%s
+
+                Generate 3 short-answer comprehension questions that test if the student truly understands their own code.
+                The questions must reference specific variable names, functions, or design choices they made in their code.
+                Do not make them generic.
+
+                Format the output EXACTLY as:
+                QUESTIONS:
+                1. <question 1>
+                2. <question 2>
+                3. <question 3>
+                EXPECTED_ANSWERS:
+                1. <answer 1>
+                2. <answer 2>
+                3. <answer 3>
+                """,
+                content.getTeachingObjective(),
+                content.getCoreContent(),
+                code
+        );
+
+        String apiKey = getGeminiToken(studentId);
+        String result = geminiClient.generate(prompt, apiKey);
+
+        Instructor instructor = Instructor.builder()
+                .id(UUID.randomUUID())
+                .actionType(InstructorActionType.COMPREHENSION_GENERATE)
+                .status(InstructorStatus.COMPLETED)
+                .studentId(studentId)
+                .conceptId(concept.getId())
+                .result(result)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+
+        return instructorRepository.save(instructor);
+    }
+
+    @Override
+    public boolean evaluateComprehensionCheck(UUID studentId, String questions, String expectedAnswers, String studentAnswers) {
+        log.info("Evaluating comprehension check answers for student: {}", studentId);
+
+        String prompt = String.format(
+                """
+                You are an expert software engineering tutor grading a student's answers to comprehension questions.
+
+                Questions and model answers:
+                %%s
+                %%s
+
+                Student's submitted answers:
+                %%s
+
+                Does the student's submission demonstrate sufficient understanding of the questions?
+                All questions must be answered reasonably well.
+
+                Respond with EXACTLY one word: PASS or FAIL
+                """,
+                questions, expectedAnswers, studentAnswers
+        );
+
+        String apiKey = getGeminiToken(studentId);
+        String result = geminiClient.generate(prompt, apiKey).trim().toUpperCase();
+        log.info("Comprehension check evaluation result: {}", result);
+        return result.contains("PASS");
     }
 }

@@ -9,4 +9,5 @@ public interface LevelBuildService {
     LevelBuild createLevelBuild(UUID studentId, UUID stageId, String githubLink, String sourceCode, String testSuite, String idempotencyKey);
     LevelBuild getLevelBuildRecord(UUID id);
     boolean awardLevelXpOnce(UUID levelBuildId, int amount);
+    LevelBuild save(LevelBuild lb);
 }

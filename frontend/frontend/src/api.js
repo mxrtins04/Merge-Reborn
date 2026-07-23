@@ -19,14 +19,50 @@ export class ApiError extends Error {
 }
 
 /**
- * Standard API call helper.
+ * In-flight refresh promise. Ensures multiple concurrent 401s only trigger
+ * one refresh call, not one per failed request.
+ */
+let refreshPromise = null;
+
+/**
+ * Attempts to refresh the access token using the HttpOnly refresh_token cookie.
+ * Returns the new access token on success, or throws if the refresh fails.
+ */
+async function refreshAccessToken() {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = fetch(`${BASE_URL}/auth/refresh`, {
+    method: 'POST',
+    credentials: 'include', // send the HttpOnly refresh_token cookie
+  }).then(async (res) => {
+    if (!res.ok) {
+      // Refresh token expired or revoked — clear session
+      localStorage.removeItem('merge_jwt');
+      localStorage.removeItem('merge_student');
+      throw new Error('Session expired. Please log in again.');
+    }
+    const data = await res.json();
+    localStorage.setItem('merge_jwt', data.accessToken);
+    return data.accessToken;
+  }).finally(() => {
+    refreshPromise = null;
+  });
+
+  return refreshPromise;
+}
+
+/**
+ * Core fetch wrapper. Attaches the Bearer token, parses the response, and
+ * throws an ApiError for non-2xx responses.
+ *
  * @param {string} endpoint - The relative endpoint path (e.g. '/auth/login')
- * @param {object} options - Fetch options (method, body, headers, etc.)
+ * @param {object} options  - Fetch options (method, body, headers, etc.)
+ * @param {boolean} _isRetry - Internal flag; prevents infinite refresh loops.
  * @returns {Promise<any>}
  */
-export async function apiCall(endpoint, options = {}) {
+export async function apiCall(endpoint, options = {}, _isRetry = false) {
   const token = localStorage.getItem('merge_jwt');
-  
+
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers,
@@ -37,10 +73,11 @@ export async function apiCall(endpoint, options = {}) {
   }
 
   const url = `${BASE_URL}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
-  
+
   const config = {
     ...options,
     headers,
+    credentials: 'include', // always include cookies (needed for refresh flow)
   };
 
   if (options.body && typeof options.body === 'object') {
@@ -58,9 +95,24 @@ export async function apiCall(endpoint, options = {}) {
     return null;
   }
 
+  // -----------------------------------------------------------------------
+  // Silent token refresh: on 401, attempt one refresh and retry the request.
+  // Skip refresh for auth endpoints themselves to avoid loops.
+  // -----------------------------------------------------------------------
+  if (response.status === 401 && !_isRetry && !endpoint.includes('/auth/')) {
+    try {
+      await refreshAccessToken();
+      // Retry the original request with the new token
+      return apiCall(endpoint, options, true);
+    } catch {
+      // Refresh failed — session is gone, propagate the 401
+      throw new ApiError(401, 'Unauthorized', { detail: 'Session expired. Please log in again.' });
+    }
+  }
+
   let data = null;
   const contentType = response.headers.get('content-type');
-  if (contentType && contentType.includes('application/json')) {
+  if (contentType && (contentType.includes('application/json') || contentType.includes('application/problem+json'))) {
     data = await response.json();
   } else {
     data = await response.text();
@@ -68,7 +120,7 @@ export async function apiCall(endpoint, options = {}) {
 
   if (!response.ok) {
     if (response.status === 401) {
-      // Token expired or invalid, clear session
+      // If we still get 401 after a retry, clear session
       localStorage.removeItem('merge_jwt');
       localStorage.removeItem('merge_student');
     }

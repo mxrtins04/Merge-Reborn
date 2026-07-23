@@ -39,7 +39,11 @@ public class LevelBuildServiceImpl implements LevelBuildService {
         if (idempotencyKey != null) {
             Optional<LevelBuild> existing = levelBuildRepository.findByIdempotencyKey(idempotencyKey);
             if (existing.isPresent()) {
-                return existing.get();
+                LevelBuild lb = existing.get();
+                if (lb.getStatus() == BuildStatus.PASSED || lb.getStatus() == BuildStatus.FAILED || lb.getStatus() == BuildStatus.FAILED_NEEDS_REVIEW) {
+                    throw new IllegalStateException("The build already completed. A new attempt requires a new key.");
+                }
+                return lb;
             }
         }
 
@@ -81,5 +85,10 @@ public class LevelBuildServiceImpl implements LevelBuildService {
             return true;
         }
         return false;
+    }
+
+    @Override
+    public LevelBuild save(LevelBuild lb) {
+        return levelBuildRepository.save(lb);
     }
 }
